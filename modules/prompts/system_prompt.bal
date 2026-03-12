@@ -59,7 +59,7 @@ Documentation quality is as important as automation quality.
 
 ---
 
-# [Write a clear, specific title that names the exact goal — e.g., "MySQL Database Connection using Ballerina Integrator Connectors" or "HTTP GET Endpoint Creation in Ballerina Integrator"]
+# [Write a clear, specific title that names the exact goal — e.g., "MySQL Database Connection using WSO2 Integrator Connectors" or "HTTP GET Endpoint Creation in WSO2 Integrator"]
 
 <!-- XML-TAGGED MARKDOWN EXECUTION PROMPT -->
 
@@ -162,6 +162,7 @@ Documentation quality is as important as automation quality.
 - No source code, no .bal snippets, no file tree listings, no Mermaid/flow diagrams.
 - Do NOT mention code-server, localhost URLs, port numbers, internal file system paths, artifact directory paths, or any automation infrastructure in the document content.
 - Documentation starts from Stage 2 (opening the WSO2 Integrator: BI panel) — do NOT include Stage 1 steps (code-server navigation, workspace folder setup, or VS Code clean-up actions).
+- In the document content, refer to the extension as **"WSO2 Integrator"** — do NOT use "Ballerina Integrator", "BI", or "WSO2 Integrator: BI".
 </rules_documentation>
 
 </rules>
@@ -365,7 +366,7 @@ WSO2 Integrator: BI panel is opened. Write one step per distinct UI action that 
 screenshot. Step descriptions must reflect what actually happened — e.g., the actual
 integration name used, the actual UI element clicked. Number steps starting from 1.]
 
-### Step 1: [Description of first setup action — e.g., "Open the WSO2 Integrator: BI Panel"]
+### Step 1: [Description of first setup action — e.g., "Open the WSO2 Integrator Panel"]
 [One sentence.]
 ![description](../screenshots/[prefix]_step_02_bi_panel.png)
 
