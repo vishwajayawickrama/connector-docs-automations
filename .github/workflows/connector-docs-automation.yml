@@ -1,0 +1,164 @@
+name: Connector Documentation Automation
+
+on:
+  workflow_dispatch:
+    inputs:
+      userGoal:
+        description: "The WSO2 integration goal to document (e.g. 'Create an HTTP GET connector that fetches data from a MySQL database')"
+        required: true
+        type: string
+      codeServerPort:
+        description: "code-server port"
+        required: false
+        default: "8080"
+        type: string
+      agentServerPort:
+        description: "Python agent server port"
+        required: false
+        default: "8765"
+        type: string
+
+jobs:
+  automate:
+    name: Generate Integration Documentation
+    runs-on: ubuntu-latest
+    environment: docs-automation
+    timeout-minutes: 90
+
+    steps:
+      # ── 1. Source code ───────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Ballerina ─────────────────────────────────────────────────────────
+      - name: Install Ballerina 2201.13.1
+        run: |
+          wget -q https://dist.ballerina.io/downloads/2201.13.1/ballerina-2201.13.1-swan-lake-linux-x64.deb
+          sudo dpkg -i ballerina-2201.13.1-swan-lake-linux-x64.deb
+          echo "/usr/lib/ballerina/bin" >> "$GITHUB_PATH"
+
+      # ── 3. Python ────────────────────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install Python dependencies
+        run: |
+          cd agent
+          uv venv
+          uv pip install -r requirements.txt
+
+      # ── 4. Node.js ───────────────────────────────────────────────────────────
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      # ── 5. Claude Code CLI ───────────────────────────────────────────────────
+      # The pipeline checks 'claude --version' (Step 2 pre-flight).
+      # The claude-agent-sdk spawns a 'claude' subprocess for agentic execution.
+      # The CLI will authenticate via Claude Pro OAuth credentials (see Step 9).
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      # ── 6. Playwright ────────────────────────────────────────────────────────
+      # Installs Chromium and all required system libraries for headless browsing.
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
+      # ── 7. code-server ───────────────────────────────────────────────────────
+      # Install code-server first so we can pre-install the WSO2 extension before
+      # the pipeline starts. The pipeline's Step 3 (check/install) will see it's
+      # already installed and skip; Step 4 (start) will launch it fresh.
+      - name: Install code-server
+        run: curl -fsSL https://code-server.dev/install.sh | sh
+
+      # ── 8. WSO2 Ballerina Integrator extension ───────────────────────────────
+      # code-server defaults to open-vsx.org; WSO2 extensions live on the VS Code
+      # marketplace, so we set the gallery env vars to point there instead.
+      # Extensions land in ~/.local/share/code-server/extensions/ and are loaded
+      # automatically when code-server starts during the pipeline.
+      - name: Install WSO2 Ballerina Integrator extension
+        env:
+          VSCODE_GALLERY_SERVICE_URL: "https://marketplace.visualstudio.com/_apis/public/gallery"
+          VSCODE_GALLERY_CACHE_URL: "https://vscodeexgallery.azureedge.net"
+          VSCODE_GALLERY_ITEM_URL: "https://marketplace.visualstudio.com/items"
+        run: code-server --install-extension WSO2.ballerina-integrator
+
+      # ── 9. Claude Pro credentials ────────────────────────────────────────────
+      # Writes ~/.claude/.credentials.json from two GitHub secrets:
+      #   CLAUDE_ACCESS_TOKEN  — the accessToken value from your local credentials
+      #   CLAUDE_REFRESH_TOKEN — the refreshToken value from your local credentials
+      # The other fields (expiresAt, scopes, subscriptionType, rateLimitTier) are
+      # static and taken directly from the known credentials structure.
+      - name: Restore Claude Pro credentials
+        env:
+          CLAUDE_ACCESS_TOKEN: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          CLAUDE_REFRESH_TOKEN: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+        run: |
+          mkdir -p ~/.claude
+          printf '{"claudeAiOauth":{"accessToken":"%s","refreshToken":"%s","expiresAt":1772625924824,"scopes":["user:inference","user:mcp_servers","user:profile","user:sessions:claude_code"],"subscriptionType":"pro","rateLimitTier":"default_claude_ai"}}' \
+            "$CLAUDE_ACCESS_TOKEN" "$CLAUDE_REFRESH_TOKEN" > ~/.claude/.credentials.json
+
+      # ── 10. Config.toml ──────────────────────────────────────────────────────
+      # Use Python to write the file so special characters in the API key or goal
+      # are properly escaped for TOML basic string syntax.
+      - name: Create Config.toml
+        env:
+          USER_GOAL: ${{ inputs.userGoal }}
+          CODE_SERVER_PORT: ${{ inputs.codeServerPort }}
+          AGENT_SERVER_PORT: ${{ inputs.agentServerPort }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        run: |
+          python3 - << 'PYEOF'
+          import os
+
+          def toml_escape(s: str) -> str:
+              """Escape backslashes and double-quotes for a TOML basic string."""
+              return s.replace("\\", "\\\\").replace('"', '\\"')
+
+          api_key    = os.environ["LLM_API_KEY"]
+          user_goal  = toml_escape(os.environ["USER_GOAL"])
+          code_port  = int(os.environ["CODE_SERVER_PORT"])
+          agent_port = int(os.environ["AGENT_SERVER_PORT"])
+
+          config = (
+              f'llmApiKey = "{api_key}"\n'
+              f'userGoal = "{user_goal}"\n'
+              f"codeServerPort = {code_port}\n"
+              f"agentServerPort = {agent_port}\n"
+          )
+
+          with open("Config.toml", "w") as f:
+              f.write(config)
+
+          print("Config.toml written successfully.")
+          PYEOF
+
+      # ── 11. Run the full pipeline ────────────────────────────────────────────
+      # No API key env var is set here intentionally:
+      # - Ballerina (ai_client.bal) reads LLM_API_KEY from Config.toml (Step 10).
+      # - The claude-agent-sdk subprocess has no API key in its environment, so the
+      #   'claude' CLI authenticates via the OAuth credentials restored in Step 9.
+      - name: Run pipeline
+        run: bal run
+        timeout-minutes: 80
+
+      # ── 12. Upload artifacts ─────────────────────────────────────────────────
+      # Always upload — even on failure — so partial outputs (e.g. execution prompt
+      # generated but agent crashed) are available for debugging.
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: automation-artifacts-${{ github.run_id }}
+          path: |
+            artifacts/execution-prompt/
+            artifacts/screenshots/
+            artifacts/workflow-docs/
+          retention-days: 30
+          if-no-files-found: warn
