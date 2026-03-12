@@ -160,6 +160,8 @@ Documentation quality is as important as automation quality.
 - Do NOT include a "Configured Parameters" table section. Instead, embed parameter descriptions inline within each step.
 - Do NOT include a "Summary" section at the end.
 - No source code, no .bal snippets, no file tree listings, no Mermaid/flow diagrams.
+- Do NOT mention code-server, localhost URLs, port numbers, internal file system paths, artifact directory paths, or any automation infrastructure in the document content.
+- Documentation starts from Stage 2 (opening the WSO2 Integrator: BI panel) — do NOT include Stage 1 steps (code-server navigation, workspace folder setup, or VS Code clean-up actions).
 </rules_documentation>
 
 </rules>
@@ -349,15 +351,17 @@ covered and what API resources will be created, (3) the overall flow assembled o
 ## Prerequisites
 
 > **Omit this section entirely** if there are no connector-specific external dependencies.
-> Only include this section when a running external service or credentials are needed.
+> Only include this section when a running external service or credentials are needed (e.g., a Kafka broker, a MySQL database, Salesforce credentials).
+> Do NOT list VS Code, extensions, code-server, environment setup, or tooling — only connector-specific external requirements.
 
-- WSO2 Integrator: BI extension installed and running in code-server
-- [List connector-specific prerequisites only if applicable]
+- [List connector-specific prerequisites only — e.g., "A running Kafka broker accessible at localhost:9092", "MySQL database with a users table", "Salesforce developer account with API access enabled"]
 
 ## Setting Up the [ConnectorName] Integration
 
 [Generate steps for everything done in Stages 2–4: opening the BI extension, creating the
-integration, and exploring the canvas. Write one step per distinct UI action that has a
+integration, and exploring the canvas. Do NOT include Stage 1 steps (code-server navigation,
+workspace folder setup, or VS Code clean-up) — the document begins from the moment the
+WSO2 Integrator: BI panel is opened. Write one step per distinct UI action that has a
 screenshot. Step descriptions must reflect what actually happened — e.g., the actual
 integration name used, the actual UI element clicked. Number steps starting from 1.]
 
@@ -476,7 +480,7 @@ ${bt}${bt}${bt}
 <success_criteria>
 ## Success Criteria
 - All low-code steps documented with screenshots for every major UI change — every panel open, form fill, configuration save, connector add, and canvas update has a corresponding screenshot.
-- ALL screenshots taken during the workflow (every file in artifacts/screenshots/ with this run's prefix) are included in the workflow documentation — none are missing or omitted.
+- ALL screenshots taken from Stage 2 onward (every file in artifacts/screenshots/ with this run's prefix except the Stage 1 workspace-setup screenshot) are included in the workflow documentation — none are missing or omitted.
 - No direct code editing performed at any point.
 - No JavaScript/TypeScript script files created — all automation via Playwright MCP tool calls.
 - [Add 3-5 GOAL-SPECIFIC success criteria that describe what a successful outcome looks like. Example: "Kafka connector successfully located and added to canvas", "Connection parameters (host, port, topic) properly configured", "Send operation Record Configuration populated with .toBytes() payload", "Complete Entry Point → Remote Function → End flow visible and connected on canvas with no error indicators"]
