@@ -439,6 +439,36 @@ ${bt}${bt}${bt}
 - Use ${bt}../screenshots/${bt} for all image paths. Save to: ${bt}artifacts/workflow-docs/[goal-slug]-connector-guide.md${bt}
 - No "## Configured Parameters" table. No "## Summary" section.
 - "## What You'll Build" MUST include an "**Operations used:**" bullet list with one-line descriptions.
+
+---
+
+**MANDATORY SELF-REVIEW — scan your draft line by line BEFORE writing the file. Fix every violation found:**
+
+**BANNED CONTENT — must not appear anywhere in the document:**
+1. ${bt}code-server${bt} — remove and rephrase without it
+2. ${bt}localhost${bt} — remove all URLs and network addresses
+3. Port numbers (${bt}:8080${bt}, ${bt}:8765${bt}, etc.) — remove entirely
+4. File system paths (${bt}/home/${bt}, ${bt}~/${bt}, ${bt}/workspace/${bt}, ${bt}artifacts/${bt}, etc.) — remove entirely
+5. "Ballerina" as a platform name ("Ballerina integration project", "Ballerina 2201.x", "Swan Lake") — replace with "WSO2 Integrator" or omit
+6. ${bt}.bal${bt} file references or Ballerina-syntax explanations in step prose — remove from step descriptions
+7. Code fence blocks (triple-backtick blocks of any language — ballerina, bash, json, etc.) in step descriptions — remove entirely
+8. Stage 1 actions (navigating to code-server, opening workspace folder, closing terminal/tabs) — remove; document begins from the WSO2 Integrator panel
+9. Internal automation details (${bt}browser_type${bt}, ${bt}browser_fill${bt}, "helper dropdown", "command palette mode switching", "fill replaces") — remove entirely
+10. Troubleshooting, Notes, Tips, or any extra section not in the template — remove entirely
+11. Numbered H2 section headers (${bt}## 1.${bt}, ${bt}## 2.${bt}) or any H2 not in the fixed list below — rename or remove
+
+**SECTION STRUCTURE CHECK — your document MUST have EXACTLY these H2 sections in this exact order:**
+1. ${bt}## What You'll Build${bt}
+2. ${bt}## Prerequisites${bt} — ONLY if the connector requires an external running service or credentials; omit entirely otherwise
+3. ${bt}## Setting Up the [ConnectorName] Integration${bt}
+4. ${bt}## Adding the [ConnectorName] Connector${bt}
+5. ${bt}## Configuring the [ConnectorName] Connection${bt}
+6. ${bt}## Configuring the [ConnectorName] [OperationName] Operation${bt}
+7. ${bt}## Verifying the [ConnectorName] Integration${bt}
+
+If your draft contains ANY H2 section not in this list, rename it to match or delete it. No additional sections are permitted.
+
+**Only write the file after all checks above pass.**
 </stage>
 
 <stage id="N+2" name="Workspace Cleanup">
