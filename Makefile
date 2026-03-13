@@ -1,5 +1,6 @@
 .PHONY: help setup setup-python setup-bal build run \
         start-agent stop-agent \
+        crop-screenshots crop-screenshots-dry crop-screenshots-backup \
         clean clean-artifacts convert-pdf
 
 # ── Default ──────────────────────────────────────────────────────────────────
@@ -13,7 +14,7 @@ help:
 	@echo "    make setup-bal        Build the Ballerina project"
 	@echo ""
 	@echo "  Run"
-	@echo "    make run              Run the full 8-step pipeline (bal run)"
+	@echo "    make run              Run the full 12-step pipeline (bal run + crop)"
 	@echo "    make start-agent      Start the Python agent server in the foreground"
 	@echo "    make stop-agent       Send shutdown request to the agent server"
 	@echo ""
@@ -42,6 +43,16 @@ setup-bal:
 run:
 	@echo "→ Running full pipeline..."
 	bal run
+	agent/.venv/bin/python agent/crop_screenshots.py
+
+crop-screenshots:
+	agent/.venv/bin/python agent/crop_screenshots.py
+
+crop-screenshots-dry:
+	agent/.venv/bin/python agent/crop_screenshots.py --dry-run
+
+crop-screenshots-backup:
+	agent/.venv/bin/python agent/crop_screenshots.py --backup
 
 start-agent:
 	@echo "→ Starting Python agent server (agent/agent_server.py)..."

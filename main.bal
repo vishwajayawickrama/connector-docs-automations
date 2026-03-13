@@ -17,7 +17,7 @@ configurable int agentServerPort = 8765;
 # Phase 1  (Steps 1–2):  Pre-flight validation — API key and Claude Code CLI.
 # Phase 2  (Steps 3–5):  Infrastructure     — code-server and Python agent server.
 # Phase 3  (Steps 6–10): Prompt generation  — build, call Claude, format, save.
-# Phase 4  (Step  11):   Agent execution    — run the Claude agent.
+# Phase 4  (Steps 11–12): Agent execution  — run the Claude agent, crop screenshots.
 #
 # + return - an error if any step fails
 public function main() returns error? {
@@ -130,6 +130,28 @@ public function main() returns error? {
     // Step 11: Submit the execution prompt to the agent server and stream logs
     utils:log("[STEP 11] Running Claude agent...");
     check agent_client:runClaudeAgent(promptPath, agentUrl);
+    utils:log("");
+
+    // ── Phase 4 (cont.): Post-processing ────────────────────────────────────
+
+    // Step 12: Crop UI chrome from screenshots produced by the agent
+    utils:log("[STEP 12] Cropping screenshots...");
+    os:Process|error cropProc = os:exec({
+        value: "agent/.venv/bin/python",
+        arguments: ["agent/crop_screenshots.py"]
+    });
+    if cropProc is error {
+        utils:log("\t[WARN] Could not launch crop_screenshots.py: " + cropProc.message());
+        utils:log("\t[WARN] Run `make crop-screenshots` manually to crop screenshots.");
+    } else {
+        int exitCode = check cropProc.waitForExit();
+        if exitCode == 0 {
+            utils:log("\t[INFO] Screenshots cropped successfully.");
+        } else {
+            utils:log("\t[WARN] crop_screenshots.py exited with code " + exitCode.toString() + ".");
+            utils:log("\t[WARN] Run `make crop-screenshots` manually to crop screenshots.");
+        }
+    }
     utils:log("");
 
     // Print stats
