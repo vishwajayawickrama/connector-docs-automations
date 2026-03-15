@@ -19,8 +19,8 @@ from pathlib import Path
 
 SCREENSHOTS_DIR = Path("artifacts/screenshots")
 
-DEFAULT_TOP = 34
-DEFAULT_BOTTOM = 20
+DEFAULT_TOP = 32
+DEFAULT_BOTTOM = 18
 DEFAULT_LEFT = 0
 DEFAULT_RIGHT = 0
 
