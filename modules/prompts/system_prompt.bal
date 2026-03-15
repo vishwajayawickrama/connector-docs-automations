@@ -159,7 +159,7 @@ Documentation quality is as important as automation quality.
 - The "What You'll Build" section MUST list the connector-specific functions/operations used with one-line descriptions.
 - Do NOT include a "Configured Parameters" table section. Instead, embed parameter descriptions inline within each step.
 - Do NOT include a "Summary" section at the end.
-- No source code, no .bal snippets, no file tree listings, no Mermaid/flow diagrams.
+- No source code, no .bal snippets, no file tree listings, no Mermaid/flow diagrams, no code fence blocks of any kind anywhere in the document.
 - Do NOT mention code-server, localhost URLs, port numbers, internal file system paths, artifact directory paths, or any automation infrastructure in the document content.
 - Documentation starts from Stage 2 (opening the WSO2 Integrator: BI panel) — do NOT include Stage 1 steps (code-server navigation, workspace folder setup, or VS Code clean-up actions).
 - In the document content, refer to the extension as **"WSO2 Integrator"** — do NOT use "Ballerina Integrator", "BI", or "WSO2 Integrator: BI".
@@ -444,18 +444,24 @@ ${bt}${bt}${bt}
 
 **MANDATORY SELF-REVIEW — scan your draft line by line BEFORE writing the file. Fix every violation found:**
 
+**TITLE CHECK — the very first line of the document must be:**
+${bt}# [ConnectorName] Connector Example${bt}
+No frontmatter, no metadata block, no blockquote header, no blank lines before it. If your draft starts with anything else (e.g., a ${bt}> **Connector:**${bt} block, a subtitle, or an "Integration Guide" title), discard those lines and replace with the correct title format.
+
 **BANNED CONTENT — must not appear anywhere in the document:**
 1. ${bt}code-server${bt} — remove and rephrase without it
 2. ${bt}localhost${bt} — remove all URLs and network addresses
 3. Port numbers (${bt}:8080${bt}, ${bt}:8765${bt}, etc.) — remove entirely
 4. File system paths (${bt}/home/${bt}, ${bt}~/${bt}, ${bt}/workspace/${bt}, ${bt}artifacts/${bt}, etc.) — remove entirely
 5. "Ballerina" as a platform name ("Ballerina integration project", "Ballerina 2201.x", "Swan Lake") — replace with "WSO2 Integrator" or omit
-6. ${bt}.bal${bt} file references or Ballerina-syntax explanations in step prose — remove from step descriptions
-7. Code fence blocks (triple-backtick blocks of any language — ballerina, bash, json, etc.) in step descriptions — remove entirely
+6. ${bt}.bal${bt} file references or Ballerina-syntax explanations anywhere in the document — remove entirely
+7. Code fence blocks (triple-backtick blocks of any language — ballerina, bash, json, sql, etc.) **anywhere in the document** — remove entirely. This includes "Generated Source" snippets, CLI command blocks, table schema blocks, and any other fenced code. No exceptions.
 8. Stage 1 actions (navigating to code-server, opening workspace folder, closing terminal/tabs) — remove; document begins from the WSO2 Integrator panel
 9. Internal automation details (${bt}browser_type${bt}, ${bt}browser_fill${bt}, "helper dropdown", "command palette mode switching", "fill replaces") — remove entirely
-10. Troubleshooting, Notes, Tips, or any extra section not in the template — remove entirely
+10. Extra sections not in the fixed template — remove entirely. Explicitly banned section names: "Overview", "Troubleshooting", "Notes", "Tips", "Summary", "Verification and Testing", "Generated Ballerina Source", "Generated Source", "Testing with Real Credentials", "Status Bar Indicators", "Canvas Flow Verification", "Testing", or any section that is not in the 7-item fixed list below
 11. Numbered H2 section headers (${bt}## 1.${bt}, ${bt}## 2.${bt}) or any H2 not in the fixed list below — rename or remove
+12. Frontmatter or metadata blocks at the top of the document — blockquote lines like ${bt}> **Connector:**${bt}, ${bt}> **Runtime:**${bt}, YAML front matter, or any preamble before the H1 title — remove entirely
+13. Timestamp footers or "Generated on" lines at the bottom of the document — remove entirely
 
 **SECTION STRUCTURE CHECK — your document MUST have EXACTLY these H2 sections in this exact order:**
 1. ${bt}## What You'll Build${bt}
@@ -466,7 +472,9 @@ ${bt}${bt}${bt}
 6. ${bt}## Configuring the [ConnectorName] [OperationName] Operation${bt}
 7. ${bt}## Verifying the [ConnectorName] Integration${bt}
 
-If your draft contains ANY H2 section not in this list, rename it to match or delete it. No additional sections are permitted.
+If your draft contains ANY H2 section not in this list — even if it seems useful or informative — delete it entirely. No additional sections are permitted under any circumstances.
+
+**DISCARD AND REWRITE rule:** If after scanning your draft you find more than 2 violations, do NOT attempt to patch them one by one. Discard the entire draft and write a fresh document from scratch, following the mandatory template above from the first line.
 
 **Only write the file after all checks above pass.**
 </stage>
