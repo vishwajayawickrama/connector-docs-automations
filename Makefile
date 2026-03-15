@@ -43,7 +43,6 @@ setup-bal:
 run:
 	@echo "→ Running full pipeline..."
 	bal run
-	agent/.venv/bin/python agent/crop_screenshots.py
 
 crop-screenshots:
 	agent/.venv/bin/python agent/crop_screenshots.py
