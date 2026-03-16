@@ -59,7 +59,7 @@ Documentation quality is as important as automation quality.
 
 ---
 
-# [Write a clear, specific title that names the exact goal — e.g., "MySQL Database Connection using Ballerina Integrator Connectors" or "HTTP GET Endpoint Creation in Ballerina Integrator"]
+# [Write a clear, specific title that names the exact goal — e.g., "MySQL Database Connection using WSO2 Integrator Connectors" or "HTTP GET Endpoint Creation in WSO2 Integrator"]
 
 <!-- XML-TAGGED MARKDOWN EXECUTION PROMPT -->
 
@@ -159,7 +159,10 @@ Documentation quality is as important as automation quality.
 - The "What You'll Build" section MUST list the connector-specific functions/operations used with one-line descriptions.
 - Do NOT include a "Configured Parameters" table section. Instead, embed parameter descriptions inline within each step.
 - Do NOT include a "Summary" section at the end.
-- No source code, no .bal snippets, no file tree listings, no Mermaid/flow diagrams.
+- No source code, no .bal snippets, no file tree listings, no Mermaid/flow diagrams, no code fence blocks of any kind anywhere in the document.
+- Do NOT mention code-server, localhost URLs, port numbers, internal file system paths, artifact directory paths, or any automation infrastructure in the document content.
+- Documentation starts from Stage 2 (opening the WSO2 Integrator: BI panel) — do NOT include Stage 1 steps (code-server navigation, workspace folder setup, or VS Code clean-up actions).
+- In the document content, refer to the extension as **"WSO2 Integrator"** — do NOT use "Ballerina Integrator", "BI", or "WSO2 Integrator: BI".
 </rules_documentation>
 
 </rules>
@@ -349,19 +352,21 @@ covered and what API resources will be created, (3) the overall flow assembled o
 ## Prerequisites
 
 > **Omit this section entirely** if there are no connector-specific external dependencies.
-> Only include this section when a running external service or credentials are needed.
+> Only include this section when a running external service or credentials are needed (e.g., a Kafka broker, a MySQL database, Salesforce credentials).
+> Do NOT list VS Code, extensions, code-server, environment setup, or tooling — only connector-specific external requirements.
 
-- WSO2 Integrator: BI extension installed and running in code-server
-- [List connector-specific prerequisites only if applicable]
+- [List connector-specific prerequisites only — e.g., "A running Kafka broker accessible at localhost:9092", "MySQL database with a users table", "Salesforce developer account with API access enabled"]
 
 ## Setting Up the [ConnectorName] Integration
 
 [Generate steps for everything done in Stages 2–4: opening the BI extension, creating the
-integration, and exploring the canvas. Write one step per distinct UI action that has a
+integration, and exploring the canvas. Do NOT include Stage 1 steps (code-server navigation,
+workspace folder setup, or VS Code clean-up) — the document begins from the moment the
+WSO2 Integrator: BI panel is opened. Write one step per distinct UI action that has a
 screenshot. Step descriptions must reflect what actually happened — e.g., the actual
 integration name used, the actual UI element clicked. Number steps starting from 1.]
 
-### Step 1: [Description of first setup action — e.g., "Open the WSO2 Integrator: BI Panel"]
+### Step 1: [Description of first setup action — e.g., "Open the WSO2 Integrator Panel"]
 [One sentence.]
 ![description](../screenshots/[prefix]_step_02_bi_panel.png)
 
@@ -434,6 +439,44 @@ ${bt}${bt}${bt}
 - Use ${bt}../screenshots/${bt} for all image paths. Save to: ${bt}artifacts/workflow-docs/[goal-slug]-connector-guide.md${bt}
 - No "## Configured Parameters" table. No "## Summary" section.
 - "## What You'll Build" MUST include an "**Operations used:**" bullet list with one-line descriptions.
+
+---
+
+**MANDATORY SELF-REVIEW — scan your draft line by line BEFORE writing the file. Fix every violation found:**
+
+**TITLE CHECK — the very first line of the document must be:**
+${bt}# [ConnectorName] Connector Example${bt}
+No frontmatter, no metadata block, no blockquote header, no blank lines before it. If your draft starts with anything else (e.g., a ${bt}> **Connector:**${bt} block, a subtitle, or an "Integration Guide" title), discard those lines and replace with the correct title format.
+
+**BANNED CONTENT — must not appear anywhere in the document:**
+1. ${bt}code-server${bt} — remove and rephrase without it
+2. ${bt}localhost${bt} — remove all URLs and network addresses
+3. Port numbers (${bt}:8080${bt}, ${bt}:8765${bt}, etc.) — remove entirely
+4. File system paths (${bt}/home/${bt}, ${bt}~/${bt}, ${bt}/workspace/${bt}, ${bt}artifacts/${bt}, etc.) — remove entirely
+5. "Ballerina" as a platform name ("Ballerina integration project", "Ballerina 2201.x", "Swan Lake") — replace with "WSO2 Integrator" or omit
+6. ${bt}.bal${bt} file references or Ballerina-syntax explanations anywhere in the document — remove entirely
+7. Code fence blocks (triple-backtick blocks of any language — ballerina, bash, json, sql, etc.) **anywhere in the document** — remove entirely. This includes "Generated Source" snippets, CLI command blocks, table schema blocks, and any other fenced code. No exceptions.
+8. Stage 1 actions (navigating to code-server, opening workspace folder, closing terminal/tabs) — remove; document begins from the WSO2 Integrator panel
+9. Internal automation details (${bt}browser_type${bt}, ${bt}browser_fill${bt}, "helper dropdown", "command palette mode switching", "fill replaces") — remove entirely
+10. Extra sections not in the fixed template — remove entirely. Explicitly banned section names: "Overview", "Troubleshooting", "Notes", "Tips", "Summary", "Verification and Testing", "Generated Ballerina Source", "Generated Source", "Testing with Real Credentials", "Status Bar Indicators", "Canvas Flow Verification", "Testing", or any section that is not in the 7-item fixed list below
+11. Numbered H2 section headers (${bt}## 1.${bt}, ${bt}## 2.${bt}) or any H2 not in the fixed list below — rename or remove
+12. Frontmatter or metadata blocks at the top of the document — blockquote lines like ${bt}> **Connector:**${bt}, ${bt}> **Runtime:**${bt}, YAML front matter, or any preamble before the H1 title — remove entirely
+13. Timestamp footers or "Generated on" lines at the bottom of the document — remove entirely
+
+**SECTION STRUCTURE CHECK — your document MUST have EXACTLY these H2 sections in this exact order:**
+1. ${bt}## What You'll Build${bt}
+2. ${bt}## Prerequisites${bt} — ONLY if the connector requires an external running service or credentials; omit entirely otherwise
+3. ${bt}## Setting Up the [ConnectorName] Integration${bt}
+4. ${bt}## Adding the [ConnectorName] Connector${bt}
+5. ${bt}## Configuring the [ConnectorName] Connection${bt}
+6. ${bt}## Configuring the [ConnectorName] [OperationName] Operation${bt}
+7. ${bt}## Verifying the [ConnectorName] Integration${bt}
+
+If your draft contains ANY H2 section not in this list — even if it seems useful or informative — delete it entirely. No additional sections are permitted under any circumstances.
+
+**DISCARD AND REWRITE rule:** If after scanning your draft you find more than 2 violations, do NOT attempt to patch them one by one. Discard the entire draft and write a fresh document from scratch, following the mandatory template above from the first line.
+
+**Only write the file after all checks above pass.**
 </stage>
 
 <stage id="N+2" name="Workspace Cleanup">
@@ -476,7 +519,7 @@ ${bt}${bt}${bt}
 <success_criteria>
 ## Success Criteria
 - All low-code steps documented with screenshots for every major UI change — every panel open, form fill, configuration save, connector add, and canvas update has a corresponding screenshot.
-- ALL screenshots taken during the workflow (every file in artifacts/screenshots/ with this run's prefix) are included in the workflow documentation — none are missing or omitted.
+- ALL screenshots taken from Stage 2 onward (every file in artifacts/screenshots/ with this run's prefix except the Stage 1 workspace-setup screenshot) are included in the workflow documentation — none are missing or omitted.
 - No direct code editing performed at any point.
 - No JavaScript/TypeScript script files created — all automation via Playwright MCP tool calls.
 - [Add 3-5 GOAL-SPECIFIC success criteria that describe what a successful outcome looks like. Example: "Kafka connector successfully located and added to canvas", "Connection parameters (host, port, topic) properly configured", "Send operation Record Configuration populated with .toBytes() payload", "Complete Entry Point → Remote Function → End flow visible and connected on canvas with no error indicators"]
