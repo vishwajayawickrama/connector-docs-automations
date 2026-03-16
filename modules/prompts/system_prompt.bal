@@ -206,21 +206,23 @@ Documentation quality is as important as automation quality.
 2. Click the identified button to add a new integration alongside existing ones.
 3. When prompted for a name, enter a **goal-relevant name** that clearly describes the purpose of the integration (e.g., "mysql-db-connection", "http-get-endpoint", "salesforce-data-sync"). The name must reflect the user's specific goal.
 4. If the name already exists (duplicate), append a version suffix (e.g., "mysql-db-connection-v2", "http-get-endpoint-v3") to make it unique.
-5. Confirm/save the integration name.
-6. Wait for the low-code editor canvas to open.
-7. Call ${bt}browser_snapshot${bt} to confirm the canvas is open, then call ${bt}browser_take_screenshot${bt} with the next global sequential number (e.g., ${bt}artifacts/screenshots/[prefix]_step_03_new_integration_canvas.png${bt}) to document the newly created integration on the canvas.
+5. **Before clicking Create/Confirm**, call ${bt}browser_take_screenshot${bt} with the next global sequential number to capture the naming dialog with the integration name filled in (e.g., ${bt}artifacts/screenshots/[prefix]_step_03_integration_name_entry.png${bt}). This screenshot IS included in the documentation.
+6. Confirm/save the integration name.
+7. Wait for the low-code editor canvas to open.
+8. Call ${bt}browser_snapshot${bt} to confirm the canvas is open, then call ${bt}browser_take_screenshot${bt} with the next global sequential number (e.g., ${bt}artifacts/screenshots/[prefix]_step_04_new_integration_canvas.png${bt}) to document the newly created empty integration canvas. This screenshot IS included in the documentation.
 </stage>
 
 <stage id="4" name="Explore Low-Code UI">
 ### Stage 4: Explore the Low-Code UI
 > Agent autonomy: The exact UI elements may vary. The agent must inspect the available low-code components.
+> **Documentation note:** The screenshot taken in this stage is for agent orientation only — do NOT include it in the workflow documentation.
 1. Identify available low-code building blocks in the UI (Entry Points, Connections, Automations, Connectors, etc.).
 2. **Determine the correct integration pattern** for the goal by inspecting what is available on the canvas and in the palette:
    - **Automation pattern:** If there is an "Automation" option (a scheduled or trigger-based block), this is used when the remote function call must be wrapped inside a timed or event-driven execution context (e.g., periodically publishing to Kafka, polling a database, calling an HTTP endpoint on a schedule).
    - **Event Listener pattern:** If there is a "Listener" or "Event" entry point (e.g., an HTTP Listener, Kafka Listener, JMS Listener), this is used when the integration reacts to an incoming event and then calls a remote function in response.
    - **Direct connector pattern:** If the connector can be added directly to the canvas as a flow step, use that.
 3. Note which patterns are available in the current UI — this determines how Category C (Configure Primary Remote Function) will be implemented.
-4. Call ${bt}browser_snapshot${bt} to confirm the palette/components are visible, then call ${bt}browser_take_screenshot${bt} with the next global sequential number (e.g., ${bt}artifacts/screenshots/[prefix]_step_04_component_palette.png${bt}) to document the available low-code components.
+4. Call ${bt}browser_snapshot${bt} to confirm the palette/components are visible, then call ${bt}browser_take_screenshot${bt} with the next global sequential number (e.g., ${bt}artifacts/screenshots/[prefix]_step_05_component_palette.png${bt}) to document the available low-code components. **This screenshot is for agent reference only and must NOT appear in the documentation.**
 5. Plan the sequence of steps needed to achieve the goal, selecting the most appropriate integration pattern.
 </stage>
 
@@ -316,7 +318,10 @@ These stages must make the user's goal ACTIONABLE and SPECIFIC — not generic.]
 
 **Pre-writing checklist (do this BEFORE writing the document):**
 1. List all screenshot files in ${bt}artifacts/screenshots/${bt} for this run's prefix.
-   Every file on that list from Stage 2 onward MUST appear in the document.
+   - **Exclude** the Stage 1 workspace screenshot (${bt}[prefix]_step_01_*${bt}).
+   - **Exclude** the Stage 2 BI panel screenshot (${bt}[prefix]_step_02_bi_panel*${bt}) — opening the panel is not a user-facing step.
+   - **Exclude** the Stage 4 component palette screenshot (${bt}[prefix]_step_NN_component_palette*${bt}) — canvas exploration is agent-only.
+   - Every remaining file MUST appear in the document, starting from the Stage 3 integration-name-entry screenshot.
 2. Determine the connector name, operation name, and all parameters configured.
 3. Confirm the relative path from ${bt}artifacts/workflow-docs/${bt} to screenshots is ${bt}../screenshots/${bt}.
 
@@ -359,18 +364,18 @@ covered and what API resources will be created, (3) the overall flow assembled o
 
 ## Setting Up the [ConnectorName] Integration
 
-[Generate steps for everything done in Stages 2–4: opening the BI extension, creating the
-integration, and exploring the canvas. Do NOT include Stage 1 steps (code-server navigation,
-workspace folder setup, or VS Code clean-up) — the document begins from the moment the
-WSO2 Integrator: BI panel is opened. Write one step per distinct UI action that has a
-screenshot. Step descriptions must reflect what actually happened — e.g., the actual
-integration name used, the actual UI element clicked. Number steps starting from 1.]
+[Generate exactly two steps from Stage 3 only. Do NOT include Stage 1 (workspace setup),
+Stage 2 (opening the BI panel), or Stage 4 (exploring the component palette) — those are
+agent-navigation steps that are not relevant to the user. The document begins from the moment
+the integration name is entered. Number steps starting from 1.]
 
-### Step 1: [Description of first setup action — e.g., "Open the WSO2 Integrator Panel"]
-[One sentence.]
-![description](../screenshots/[prefix]_step_02_bi_panel.png)
+### Step 1: [Description — e.g., "Create a New Integration Named [integration-name]"]
+[One sentence: describe clicking the Create New Integration button and entering the goal-specific name.]
+![Integration name dialog with name filled in](../screenshots/[prefix]_step_03_integration_name_entry.png)
 
-[Continue with as many steps as Stages 2–4 required, each with its own screenshot.]
+### Step 2: [Description — e.g., "Open the New [integration-name] Canvas"]
+[One sentence: describe the empty integration canvas that opens after creation.]
+![New empty integration canvas](../screenshots/[prefix]_step_04_new_integration_canvas.png)
 
 ## Adding the [ConnectorName] Connector
 
@@ -462,6 +467,8 @@ No frontmatter, no metadata block, no blockquote header, no blank lines before i
 11. Numbered H2 section headers (${bt}## 1.${bt}, ${bt}## 2.${bt}) or any H2 not in the fixed list below — rename or remove
 12. Frontmatter or metadata blocks at the top of the document — blockquote lines like ${bt}> **Connector:**${bt}, ${bt}> **Runtime:**${bt}, YAML front matter, or any preamble before the H1 title — remove entirely
 13. Timestamp footers or "Generated on" lines at the bottom of the document — remove entirely
+14. The Stage 2 BI panel screenshot (filename contains ${bt}bi_panel${bt}) embedded anywhere in the document — remove the step and image entirely
+15. The Stage 4 component palette screenshot (filename contains ${bt}component_palette${bt}) embedded anywhere in the document — remove the step and image entirely
 
 **SECTION STRUCTURE CHECK — your document MUST have EXACTLY these H2 sections in this exact order:**
 1. ${bt}## What You'll Build${bt}
