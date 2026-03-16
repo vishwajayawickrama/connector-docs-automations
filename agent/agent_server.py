@@ -63,7 +63,7 @@ def truncate_tool_input(tool_input: any, max_length: int = 500) -> str:
 
 
 async def run_agent(job_id: str, prompt_path: str) -> None:
-    jobs[job_id] = {"logs": [], "status": "running"}
+    jobs[job_id] = {"logs": [], "status": "running", "cost": None}
     prompt = Path(prompt_path).read_text()
 
     # Pre-create artifact directories so Playwright MCP can save screenshots
@@ -141,9 +141,12 @@ async def run_agent(job_id: str, prompt_path: str) -> None:
             log("RESULT", message.result)
 
             usage = getattr(message, "usage", None)
+            cost_usd = getattr(message, "total_cost_usd", None)
+            turns = getattr(message, "num_turns", None)
+
             if usage:
-                input_tokens = getattr(usage, "input_tokens", "?")
-                output_tokens = getattr(usage, "output_tokens", "?")
+                input_tokens = getattr(usage, "input_tokens", 0)
+                output_tokens = getattr(usage, "output_tokens", 0)
                 cache_read = getattr(usage, "cache_read_input_tokens", 0)
                 cache_write = getattr(usage, "cache_creation_input_tokens", 0)
                 log(
@@ -151,14 +154,24 @@ async def run_agent(job_id: str, prompt_path: str) -> None:
                     f"input={input_tokens} output={output_tokens} "
                     f"cache_read={cache_read} cache_write={cache_write}",
                 )
+            else:
+                input_tokens = output_tokens = cache_read = cache_write = 0
 
-            cost = getattr(message, "total_cost_usd", None)
-            if cost is not None:
-                log("USAGE", f"total_cost=${cost:.6f}")
+            if cost_usd is not None:
+                log("USAGE", f"total_cost=${cost_usd:.6f}")
 
-            turns = getattr(message, "num_turns", None)
             if turns is not None:
                 log("USAGE", f"turns={turns}")
+
+            # Store structured cost so it's returned in /jobs/<id> response
+            jobs[job_id]["cost"] = {
+                "totalCostUsd": cost_usd,
+                "inputTokens": input_tokens,
+                "outputTokens": output_tokens,
+                "cacheReadTokens": cache_read,
+                "cacheWriteTokens": cache_write,
+                "numTurns": turns,
+            }
 
     jobs[job_id]["status"] = "done"
 

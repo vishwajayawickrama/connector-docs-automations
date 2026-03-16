@@ -53,7 +53,6 @@ The document MUST contain exactly the following H2 sections, with these exact na
 4. ## Adding the [ConnectorName] Connector
 5. ## Configuring the [ConnectorName] Connection
 6. ## Configuring the [ConnectorName] [OperationName] Operation
-7. ## Verifying the [ConnectorName] Integration
 
 Rules:
 - Replace [ConnectorName] and [OperationName] with the actual names from the document
@@ -85,13 +84,9 @@ Steps that do NOT belong here (move them to the operation section instead):
 
 ### ## Configuring the [ConnectorName] [OperationName] Operation
 
-This section covers selecting the operation and configuring its inputs.
+This is the last section of the document.
 Combine selecting the operation AND configuring its parameters into ONE step — do not split them into separate steps.
 The step description plus parameter bullets plus the screenshot is sufficient; no separate "parameter details" sub-steps are needed.
-
-### ## Verifying the [ConnectorName] Integration
-
-Typically one or two steps confirming the flow on canvas is correct and complete.
 Do NOT add a Summary, Conclusion, or any closing prose after this section.
 
 ---

@@ -140,7 +140,7 @@ public function main() returns error? {
 
     // Step 11: Submit the execution prompt to the agent server and stream logs
     utils:log("[STEP 11] Running Claude agent...");
-    check agent_client:runClaudeAgent(promptPath, agentUrl);
+    agent_client:AgentCost? agentCost = check agent_client:runClaudeAgent(promptPath, agentUrl);
     utils:log("");
 
     // ── Phase 4 (cont.): Post-processing ────────────────────────────────────
@@ -215,10 +215,20 @@ public function main() returns error? {
     time:Utc endTime = time:utcNow();
     decimal durationSecs = time:utcDiffSeconds(endTime, startTime);
 
-    // Aggregate LLM costs (direct API calls only; agent SDK cost tracked separately)
+    // Aggregate direct API call costs
     int totalInputTokens  = promptGenUsage.inputTokens  + slugGenUsage.inputTokens  + docEnfUsage.inputTokens;
     int totalOutputTokens = promptGenUsage.outputTokens + slugGenUsage.outputTokens + docEnfUsage.outputTokens;
     decimal totalCostUsd  = promptGenUsage.costUsd      + slugGenUsage.costUsd      + docEnfUsage.costUsd;
+
+    // Add agent SDK cost to combined total
+    decimal agentCostUsd = 0.0d;
+    if agentCost is agent_client:AgentCost {
+        decimal? ac = agentCost.totalCostUsd;
+        if ac is decimal {
+            agentCostUsd = ac;
+        }
+    }
+    decimal totalCombinedCostUsd = totalCostUsd + agentCostUsd;
 
     // Step 14: Write run log to artifacts/run-log/
     utils:log("[STEP 14] Writing run log...");
@@ -231,6 +241,15 @@ public function main() returns error? {
     // Build a filename-safe timestamp (replace : and . with -)
     string tsSlug = re `[:\.]`.replaceAll(timestamp, "-");
     string logPath = runLogDir + "/" + goalSlug + "_" + tsSlug + ".json";
+
+    json agentCostJson = agentCost is agent_client:AgentCost ? {
+        "totalCostUsd":    agentCost.totalCostUsd,
+        "inputTokens":     agentCost.inputTokens,
+        "outputTokens":    agentCost.outputTokens,
+        "cacheReadTokens": agentCost.cacheReadTokens,
+        "cacheWriteTokens":agentCost.cacheWriteTokens,
+        "numTurns":        agentCost.numTurns
+    } : "not available";
 
     json logJson = {
         "goal": userGoal,
@@ -254,14 +273,11 @@ public function main() returns error? {
                 "inputTokens": docEnfUsage.inputTokens,
                 "outputTokens": docEnfUsage.outputTokens,
                 "costUsd": docEnfUsage.costUsd
-            }
+            },
+            "agentExecution": agentCostJson
         },
-        "totalDirectApiCost": {
-            "inputTokens": totalInputTokens,
-            "outputTokens": totalOutputTokens,
-            "costUsd": totalCostUsd,
-            "note": "Agent SDK cost (Step 11) is tracked separately in agent logs"
-        },
+        "totalDirectApiCostUsd": totalCostUsd,
+        "totalCombinedCostUsd": totalCombinedCostUsd,
         "artifacts": {
             "executionPromptPath": promptPath,
             "workflowDocPath": enforcedDocPath == "" ? "(not written)" : enforcedDocPath
@@ -282,12 +298,13 @@ public function main() returns error? {
     utils:log(string `End time:        ${time:utcToString(endTime)}`);
     utils:log(string `Duration:        ${durationSecs}s`);
     utils:log(string `Prompt length:   ${fullPrompt.length()} chars`);
-    utils:log("--- LLM Cost (direct API calls) ---");
+    utils:log("--- LLM Cost Breakdown ---");
     utils:log(string `Prompt gen:      ${promptGenUsage.inputTokens} in / ${promptGenUsage.outputTokens} out  |  $${promptGenUsage.costUsd}`);
     utils:log(string `Slug gen:        ${slugGenUsage.inputTokens} in / ${slugGenUsage.outputTokens} out  |  $${slugGenUsage.costUsd}`);
     utils:log(string `Doc enforcement: ${docEnfUsage.inputTokens} in / ${docEnfUsage.outputTokens} out  |  $${docEnfUsage.costUsd}`);
-    utils:log(string `TOTAL:           ${totalInputTokens} in / ${totalOutputTokens} out  |  $${totalCostUsd}`);
-    utils:log("(Agent SDK cost for Step 11 is tracked separately in agent logs)");
+    utils:log(string `Direct API total:${totalInputTokens} in / ${totalOutputTokens} out  |  $${totalCostUsd}`);
+    utils:log(string `Agent SDK:       $${agentCostUsd}`);
+    utils:log(string `COMBINED TOTAL:  $${totalCombinedCostUsd}`);
 
     utils:log("");
     utils:log("=== Pipeline Complete ===");

@@ -269,23 +269,6 @@ For EACH goal-specific stage:
 
 These stages must make the user's goal ACTIONABLE and SPECIFIC — not generic.]
 
-<stage id="N" name="Verify Complete Flow">
-### Stage N: Verify the Complete End-to-End Flow
-1. Call ${bt}browser_snapshot${bt} to read the current canvas state.
-2. **Verify the Entry Point node is visible** on the canvas. The entry point depends on the integration pattern used:
-   - **Automation pattern:** an Automation block or scheduled trigger node should be visible as the top-level entry.
-   - **Event Listener pattern:** an HTTP Listener, Kafka Listener, or similar event-driven trigger node should be visible.
-   - If not visible, scroll up or zoom out on the canvas until it appears.
-3. **Verify the Remote Function node is visible** on the canvas — it should show the connector name and the operation that was configured (e.g., "Kafka - Send", "MySQL - Insert"). If it appears disconnected, check whether it needs to be linked to the Entry Point or Automation body.
-4. **Verify the End node is present** — the canvas should show a terminal/end node after the Remote Function node.
-5. Confirm the complete flow path is visible: **Entry Point (or Automation) → Remote Function → End**. The nodes should be connected with arrows/edges.
-6. Visually confirm there are NO error indicators (red borders, warning icons, missing-configuration badges) on any node in the flow.
-7. **Before taking the milestone screenshot:** ensure no .bal file tabs or source code windows are open in the editor. Close any open source tabs (Ctrl+W or click ×) so the screenshot shows only the low-code canvas.
-8. Take a milestone screenshot showing the full canvas with the complete flow connected. Use the next number in the global sequential counter. Use a descriptive filename such as ${bt}artifacts/screenshots/[prefix]_step_NN_complete_flow_canvas.png${bt} where NN is the next unused number across all screenshots taken so far.
-9. If the Remote Function node is not connected, attempt to connect it using the available low-code UI (drag edge, right-click connect, or use the "Add to flow" button). Take a screenshot after connecting.
-10. No need to actually run or deploy the integration — a correctly saved and connected flow on the canvas is sufficient.
-</stage>
-
 <stage id="N+1" name="Documentation">
 ### Stage N+1: Create Standardized Workflow Documentation
 
@@ -396,21 +379,13 @@ into ONE step. Do NOT split them into separate steps.]
 [List ALL parameters configured]
 ![description](../screenshots/[prefix]_step_NN_[description].png)
 
-## Verifying the [ConnectorName] Integration
-
-[Generate steps for the canvas verification (Stage N). Typically one step, but add more if
-the verification involved multiple actions (e.g., connecting a disconnected node).]
-
-### Step N: [Description — e.g., "Confirm the Complete [ConnectorName] Flow on Canvas"]
-[One sentence describing the specific nodes and connections visible on canvas.]
-![Complete integration flow on canvas](../screenshots/[prefix]_step_NN_complete_flow_canvas.png)
 ${bt}${bt}${bt}
 
 Save to: ${bt}artifacts/workflow-docs/[goal-slug]-connector-guide.md${bt}
 </stage>
 
-<stage id="N+2" name="Workspace Cleanup">
-### Stage N+2: Workspace Cleanup (Close Workspace)
+<stage id="N+1" name="Workspace Cleanup">
+### Stage N+1: Workspace Cleanup (Close Workspace)
 > This must always be the LAST stage. Do NOT delete any files or folders.
 1. Press **Ctrl+Shift+P** → type **Close Folder** → select **"File: Close Folder"**.
 2. Wait for VS Code to reload, then call ${bt}browser_snapshot${bt} to confirm no workspace is open.
@@ -454,7 +429,6 @@ Save to: ${bt}artifacts/workflow-docs/[goal-slug]-connector-guide.md${bt}
 - No JavaScript/TypeScript script files created — all automation via Playwright MCP tool calls.
 - [Add 3-5 GOAL-SPECIFIC success criteria that describe what a successful outcome looks like. Example: "Kafka connector successfully located and added to canvas", "Connection parameters (host, port, topic) properly configured", "Send operation Record Configuration populated with .toBytes() payload", "Complete Entry Point → Remote Function → End flow visible and connected on canvas with no error indicators"]
 - Primary remote function (Send / Insert / Create / etc.) configured with a valid, functional data template in the Record Configuration panel.
-- Complete end-to-end flow verified on canvas: Entry Point → Remote Function → End nodes all connected.
 - Documentation embeds all configured parameters inline within the relevant steps (no separate parameters table).
 - Workflow guide starts from the WSO2 Integrator: BI integration canvas.
 - Screenshots organized in the screenshots/ directory with goal-specific prefixes.
