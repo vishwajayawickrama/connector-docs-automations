@@ -142,29 +142,6 @@ Documentation quality is as important as automation quality.
 - Use ${bt}browser_snapshot${bt} to check whether the UI has fully loaded — inspect the DOM tree for expected elements.
 </rules_waiting>
 
-<rules_documentation>
-### Strict Documentation Rules (Mandatory)
-- The workflow document MUST follow the EXACT section structure defined in Stage N+1.
-  Do NOT add, remove, rename, or reorder any section header.
-- Every numbered step MUST include exactly one screenshot embedded immediately after the
-  step description using: ![description](../screenshots/filename.png)
-- Screenshots must be embedded in the ORDER they were taken (ascending step number).
-- ALL screenshots from Stage 2 onward that belong to this run MUST appear in the document.
-  Never skip a screenshot that was taken.
-- Do NOT merge multiple steps into one — each distinct UI action gets its own numbered step.
-- Do NOT add prose sections, tips, notes, warnings, or any content not in the template.
-- Section headers (H2) must match EXACTLY the five groups defined in the template — never paraphrase them.
-- Step count per section is determined by the actual workflow — generate only as many H3 steps as distinct UI actions occurred. Step numbers run sequentially across the whole document and never reset.
-- The document title must follow: "[ConnectorName] Connector Example" (e.g., "Kafka Connector Example", "MySQL Connector Example")
-- The "What You'll Build" section MUST list the connector-specific functions/operations used with one-line descriptions.
-- Do NOT include a "Configured Parameters" table section. Instead, embed parameter descriptions inline within each step.
-- Do NOT include a "Summary" section at the end.
-- No source code, no .bal snippets, no file tree listings, no Mermaid/flow diagrams, no code fence blocks of any kind anywhere in the document.
-- Do NOT mention code-server, localhost URLs, port numbers, internal file system paths, artifact directory paths, or any automation infrastructure in the document content.
-- Documentation starts from Stage 2 (opening the WSO2 Integrator: BI panel) — do NOT include Stage 1 steps (code-server navigation, workspace folder setup, or VS Code clean-up actions).
-- In the document content, refer to the extension as **"WSO2 Integrator"** — do NOT use "Ballerina Integrator", "BI", or "WSO2 Integrator: BI".
-</rules_documentation>
-
 </rules>
 
 ---
@@ -324,6 +301,8 @@ These stages must make the user's goal ACTIONABLE and SPECIFIC — not generic.]
    - Every remaining file MUST appear in the document, starting from the Stage 3 integration-name-entry screenshot.
 2. Determine the connector name, operation name, and all parameters configured.
 3. Confirm the relative path from ${bt}artifacts/workflow-docs/${bt} to screenshots is ${bt}../screenshots/${bt}.
+   **Image paths MUST be relative** — always use ${bt}../screenshots/filename.png${bt}.
+   NEVER use absolute paths (e.g., ${bt}/home/user/artifacts/screenshots/...${bt} or ${bt}/mnt/c/...${bt}).
 
 ---
 
@@ -390,9 +369,10 @@ One step per distinct UI action. Number continues from the previous section.]
 
 ## Configuring the [ConnectorName] Connection
 
-[Generate steps for opening the connection panel, filling each parameter group, and saving
-(Stage B). Split into as many steps as distinct UI actions occurred. If all parameters were
-filled on one screen, that is one step. If the form had multiple pages/panels, each is a step.]
+[Generate steps ONLY for filling in the connection form and saving it (Stage B).
+This section ends once the connection is saved — do NOT include steps for adding
+an Automation entry point, adding a Listener, or selecting an operation here.
+Those steps belong in the next section.]
 
 ### Step N: [Description — e.g., "Enter [ConnectorName] Connection Parameters"]
 [One sentence describing the action.]
@@ -401,26 +381,20 @@ filled on one screen, that is one step. If the form had multiple pages/panels, e
 [List ALL parameters configured in this step]
 ![description](../screenshots/[prefix]_step_NN_[description].png)
 
-[Add as many steps as needed — opening the panel, filling params, saving, etc.]
+[Add a step for saving the connection if it was a distinct UI action.]
 
 ## Configuring the [ConnectorName] [OperationName] Operation
 
-[Generate steps for selecting the remote function/operation, configuring its parameters, and
-saving (Stage C). One step per distinct UI action.]
+[Generate steps for Stage C — adding the entry point (if needed), selecting the operation,
+and configuring its parameters. Combine selecting the operation AND filling its parameters
+into ONE step. Do NOT split them into separate steps.]
 
-### Step N: [Description — e.g., "Select the [OperationName] Operation from the Connections Tree"]
-[One sentence.]
-- **Operation**: [operationName] — [one-line description of what this operation does]
-![description](../screenshots/[prefix]_step_NN_[description].png)
-
-### Step N: [Description — e.g., "Configure [OperationName] Input Parameters"]
-[One sentence.]
+### Step N: [Description — e.g., "Add Automation and Configure [OperationName] Operation"]
+[One sentence describing what was configured.]
 - **[paramName]**: [value used] — [one-line description]
 - **[paramName]**: [value used] — [one-line description]
-[List ALL parameters configured in this step]
+[List ALL parameters configured]
 ![description](../screenshots/[prefix]_step_NN_[description].png)
-
-[Add as many steps as needed for the full operation configuration.]
 
 ## Verifying the [ConnectorName] Integration
 
@@ -432,58 +406,7 @@ the verification involved multiple actions (e.g., connecting a disconnected node
 ![Complete integration flow on canvas](../screenshots/[prefix]_step_NN_complete_flow_canvas.png)
 ${bt}${bt}${bt}
 
----
-
-**Writing rules (mandatory):**
-- H2 section headers are FIXED — do not rename, reorder, add, or remove them.
-- One H3 step per distinct UI action; step numbers run sequentially across the entire document and never reset.
-- Step titles reflect what actually happened — never copy template placeholder text verbatim.
-- Every step includes exactly one screenshot immediately after step content, in ascending order.
-- Inline parameters as bullets: ${bt}- **[paramName]**: [value] — [description]${bt} — never in a separate table.
-- Replace all ${bt}[ConnectorName]${bt} / ${bt}[OperationName]${bt} placeholders with actual names from this run.
-- Use ${bt}../screenshots/${bt} for all image paths. Save to: ${bt}artifacts/workflow-docs/[goal-slug]-connector-guide.md${bt}
-- No "## Configured Parameters" table. No "## Summary" section.
-- "## What You'll Build" MUST include an "**Operations used:**" bullet list with one-line descriptions.
-
----
-
-**MANDATORY SELF-REVIEW — scan your draft line by line BEFORE writing the file. Fix every violation found:**
-
-**TITLE CHECK — the very first line of the document must be:**
-${bt}# [ConnectorName] Connector Example${bt}
-No frontmatter, no metadata block, no blockquote header, no blank lines before it. If your draft starts with anything else (e.g., a ${bt}> **Connector:**${bt} block, a subtitle, or an "Integration Guide" title), discard those lines and replace with the correct title format.
-
-**BANNED CONTENT — must not appear anywhere in the document:**
-1. ${bt}code-server${bt} — remove and rephrase without it
-2. ${bt}localhost${bt} — remove all URLs and network addresses
-3. Port numbers (${bt}:8080${bt}, ${bt}:8765${bt}, etc.) — remove entirely
-4. File system paths (${bt}/home/${bt}, ${bt}~/${bt}, ${bt}/workspace/${bt}, ${bt}artifacts/${bt}, etc.) — remove entirely
-5. "Ballerina" as a platform name ("Ballerina integration project", "Ballerina 2201.x", "Swan Lake") — replace with "WSO2 Integrator" or omit
-6. ${bt}.bal${bt} file references or Ballerina-syntax explanations anywhere in the document — remove entirely
-7. Code fence blocks (triple-backtick blocks of any language — ballerina, bash, json, sql, etc.) **anywhere in the document** — remove entirely. This includes "Generated Source" snippets, CLI command blocks, table schema blocks, and any other fenced code. No exceptions.
-8. Stage 1 actions (navigating to code-server, opening workspace folder, closing terminal/tabs) — remove; document begins from the WSO2 Integrator panel
-9. Internal automation details (${bt}browser_type${bt}, ${bt}browser_fill${bt}, "helper dropdown", "command palette mode switching", "fill replaces") — remove entirely
-10. Extra sections not in the fixed template — remove entirely. Explicitly banned section names: "Overview", "Troubleshooting", "Notes", "Tips", "Summary", "Verification and Testing", "Generated Ballerina Source", "Generated Source", "Testing with Real Credentials", "Status Bar Indicators", "Canvas Flow Verification", "Testing", or any section that is not in the 7-item fixed list below
-11. Numbered H2 section headers (${bt}## 1.${bt}, ${bt}## 2.${bt}) or any H2 not in the fixed list below — rename or remove
-12. Frontmatter or metadata blocks at the top of the document — blockquote lines like ${bt}> **Connector:**${bt}, ${bt}> **Runtime:**${bt}, YAML front matter, or any preamble before the H1 title — remove entirely
-13. Timestamp footers or "Generated on" lines at the bottom of the document — remove entirely
-14. The Stage 2 BI panel screenshot (filename contains ${bt}bi_panel${bt}) embedded anywhere in the document — remove the step and image entirely
-15. The Stage 4 component palette screenshot (filename contains ${bt}component_palette${bt}) embedded anywhere in the document — remove the step and image entirely
-
-**SECTION STRUCTURE CHECK — your document MUST have EXACTLY these H2 sections in this exact order:**
-1. ${bt}## What You'll Build${bt}
-2. ${bt}## Prerequisites${bt} — ONLY if the connector requires an external running service or credentials; omit entirely otherwise
-3. ${bt}## Setting Up the [ConnectorName] Integration${bt}
-4. ${bt}## Adding the [ConnectorName] Connector${bt}
-5. ${bt}## Configuring the [ConnectorName] Connection${bt}
-6. ${bt}## Configuring the [ConnectorName] [OperationName] Operation${bt}
-7. ${bt}## Verifying the [ConnectorName] Integration${bt}
-
-If your draft contains ANY H2 section not in this list — even if it seems useful or informative — delete it entirely. No additional sections are permitted under any circumstances.
-
-**DISCARD AND REWRITE rule:** If after scanning your draft you find more than 2 violations, do NOT attempt to patch them one by one. Discard the entire draft and write a fresh document from scratch, following the mandatory template above from the first line.
-
-**Only write the file after all checks above pass.**
+Save to: ${bt}artifacts/workflow-docs/[goal-slug]-connector-guide.md${bt}
 </stage>
 
 <stage id="N+2" name="Workspace Cleanup">
