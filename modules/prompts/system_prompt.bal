@@ -65,7 +65,7 @@ Documentation quality is as important as automation quality.
 
 <overview>
 ## Overview
-[Write 3-5 sentences that clearly state: (1) WHAT specific thing will be built/configured (the user's goal), (2) WHERE it will be done (Code-Server — WSO2 Integrator: BI extension, low-code UI only), (3) HOW the automation works (Playwright MCP tool calls — not scripts). The goal must be unmistakably clear from the first sentence.]
+[Write 3-5 sentences that clearly state: (1) WHAT specific thing will be built/configured (the user's goal), (2) WHERE it will be done (Code-Server — WSO2 Integrator extension, low-code UI only), (3) HOW the automation works (Playwright MCP tool calls — not scripts). The goal must be unmistakably clear from the first sentence.]
 </overview>
 
 ---
@@ -73,8 +73,8 @@ Documentation quality is as important as automation quality.
 <objectives>
 ## Objectives
 1. Navigate to the code-server instance and verify the VS Code environment is ready.
-2. Locate the WSO2 Integrator: BI extension in the VS Code sidebar.
-3. Create a new integration with a goal-relevant name.
+2. Locate the WSO2 Integrator extension in the VS Code sidebar.
+3. Create a new integration project with a goal-relevant name.
 4. Explore available low-code UI components relevant to the goal.
 5. [GOAL-SPECIFIC: List 5-10 detailed implementation objectives that describe the exact steps to achieve the user's goal. Each objective should name the specific UI component, connector, or configuration being created. Examples: "Locate the MySQL connector in the component palette", "Configure connection parameters (host, port, database, credentials)", "Save the connector configuration successfully", "Navigate to the Connections sidebar tree and select the Insert operation", "Populate the Record Configuration panel with a typed record literal", "Verify the complete Entry Point → Remote Function → End flow on the canvas"]
 6. Follow screenshot rules: ${bt}browser_snapshot${bt} to verify state after every action; ${bt}browser_take_screenshot(filename=...)${bt} after every major UI change using the global sequential counter (01, 02, 03, …) — never reset between stages.
@@ -87,7 +87,7 @@ Documentation quality is as important as automation quality.
 ## Key Requirements
 | Property | Value |
 |----------|-------|
-| **Platform** | Code-Server — WSO2 Integrator: BI extension (in-browser VS Code) |
+| **Platform** | Code-Server — WSO2 Integrator extension (in-browser VS Code) |
 | **Implementation mode** | Low-Code Only (no pro-code / no source editing) |
 | **Automation method** | Playwright MCP tool calls only (no script files) |
 | [Add 2-5 goal-specific requirement rows — e.g., connector type, database type, endpoint method, response format, etc.] |
@@ -155,10 +155,10 @@ Documentation quality is as important as automation quality.
 2. Wait for the VS Code interface to fully load (networkidle).
 3. **Open the dedicated workspace folder:**
    a. Press **Ctrl+Shift+P** → type **Open Folder** → select **"File: Open Folder"**.
-   b. In the path bar, type ${bt}~/bi-workspace${bt} and press **Enter**. If the folder doesn't exist, use the **"New Folder"** button in the dialog toolbar to create it, then open it.
+   b. In the path bar, type ${bt}~/integrator-workspace${bt} and press **Enter**. If the folder doesn't exist, use the **"New Folder"** button in the dialog toolbar to create it, then open it.
    c. If prompted **"Do you trust the authors of the files in this folder?"**, click **"Yes, I trust the authors"**.
    d. Wait for VS Code to reload to networkidle.
-   > **Workspace path:** ${bt}~/bi-workspace${bt} — reused across runs; new integrations are added alongside existing ones.
+   > **Workspace path:** ${bt}~/integrator-workspace${bt} — reused across runs; new integration projects are added alongside existing ones.
 4. **If a "Git repository found on parent" popup appears**, dismiss it by clicking **Never**.
 5. **Close the GitHub Copilot Chat panel** if it is open (look for a Copilot chat sidebar or panel — click its X/close button, or use the View menu to hide it).
 6. **Close the integrated terminal** if it is open (look for a terminal panel at the bottom of the editor — click its X/close button or press the close icon on the terminal tab).
@@ -166,27 +166,29 @@ Documentation quality is as important as automation quality.
 8. After closing all panels, tabs, and dismissing popups, call ${bt}browser_snapshot${bt} to confirm a clean empty workspace with no editor tabs open, then call ${bt}browser_take_screenshot${bt} with a descriptive filename to document this milestone (e.g., ${bt}artifacts/screenshots/[prefix]_step_01_vscode_clean.png${bt}). This is screenshot #1 in the global counter.
 </stage>
 
-<stage id="2" name="Open WSO2 Integrator: BI">
-### Stage 2: Open WSO2 Integrator: BI
-1. In the left activity bar of VS Code, locate the **WSO2 Integrator: BI** icon (it may be labelled "BI" or show the WSO2 logo).
-2. Click on the WSO2 Integrator: BI icon to open the extension panel.
-3. Wait for the extension view to fully load.
-4. Call ${bt}browser_snapshot${bt} to confirm the BI panel is active, then call ${bt}browser_take_screenshot${bt} with the next global sequential number in the filename to document this milestone (e.g., ${bt}artifacts/screenshots/[prefix]_step_02_bi_panel.png${bt} — where 02 is the next number after the previous screenshot).
+<stage id="2" name="Open WSO2 Integrator">
+### Stage 2: Open WSO2 Integrator Extension
+1. In the left activity bar of VS Code, locate the **WSO2 Integrator** icon (it may be labelled "WSO2 Integrator", show a WSO2 logo, or appear as a sidebar item after the extension loads).
+2. Click on the WSO2 Integrator icon to open the extension panel.
+3. Wait for the extension view to fully load. If the panel shows a welcome/home screen or a project list, that is the correct state.
+4. Call ${bt}browser_snapshot${bt} to confirm the WSO2 Integrator panel is active, then call ${bt}browser_take_screenshot${bt} with the next global sequential number in the filename to document this milestone (e.g., ${bt}artifacts/screenshots/[prefix]_step_02_integrator_panel.png${bt} — where 02 is the next number after the previous screenshot).
 </stage>
 
-<stage id="3" name="Create New Integration">
-### Stage 3: Create New Integration
-1. Inside the WSO2 Integrator: BI panel, create a new integration using **whichever method is available** in the current UI:
-   - **Option A:** Click the **"+" button next to "WSO2 Integrator: BI"** in the sidebar.
-   - **Option B:** Look for a **"+ New Integration"**, **"Create Integration"**, or similar button inside the panel.
-   - Use whichever option is visible — do NOT delete or overwrite any existing integrations.
-2. Click the identified button to add a new integration alongside existing ones.
-3. When prompted for a name, enter a **goal-relevant name** that clearly describes the purpose of the integration (e.g., "mysql-db-connection", "http-get-endpoint", "salesforce-data-sync"). The name must reflect the user's specific goal.
-4. If the name already exists (duplicate), append a version suffix (e.g., "mysql-db-connection-v2", "http-get-endpoint-v3") to make it unique.
-5. **Before clicking Create/Confirm**, call ${bt}browser_take_screenshot${bt} with the next global sequential number to capture the naming dialog with the integration name filled in (e.g., ${bt}artifacts/screenshots/[prefix]_step_03_integration_name_entry.png${bt}). This screenshot IS included in the documentation.
-6. Confirm/save the integration name.
-7. Wait for the low-code editor canvas to open.
-8. Call ${bt}browser_snapshot${bt} to confirm the canvas is open, then call ${bt}browser_take_screenshot${bt} with the next global sequential number (e.g., ${bt}artifacts/screenshots/[prefix]_step_04_new_integration_canvas.png${bt}) to document the newly created empty integration canvas. This screenshot IS included in the documentation.
+<stage id="3" name="Create New Integration Project">
+### Stage 3: Create New Integration Project
+1. Inside the WSO2 Integrator panel, create a new integration project using **whichever method is available** in the current UI:
+   - **Option A:** Look for a **"Create New Project"**, **"New Project"**, or **"+ New Integration"** button on the welcome/home screen of the extension.
+   - **Option B:** Click any **"+"** or **"Create"** button visible in the WSO2 Integrator sidebar panel.
+   - **Option C:** Use the Command Palette (**Ctrl+Shift+P**) → type **"WSO2 Integrator"** → select **"WSO2 Integrator: Create New Project"** or similar command if a button is not visible.
+   - Use whichever option is visible — do NOT delete or overwrite any existing projects.
+2. Click the identified button/command to start the new project creation flow.
+3. When prompted for a project name, enter a **goal-relevant name** that clearly describes the purpose (e.g., "mysql-db-connection", "http-get-endpoint", "salesforce-data-sync"). The name must reflect the user's specific goal.
+4. If any additional fields appear (e.g., version, artifact type, runtime), accept the defaults or choose values appropriate for a low-code integration.
+5. If the name already exists (duplicate), append a version suffix (e.g., "mysql-db-connection-v2") to make it unique.
+6. **Before clicking Create/Confirm on the final dialog**, call ${bt}browser_take_screenshot${bt} with the next global sequential number to capture the project creation dialog with the name filled in (e.g., ${bt}artifacts/screenshots/[prefix]_step_03_integration_name_entry.png${bt}). This screenshot IS included in the documentation.
+7. Confirm/save to create the project.
+8. Wait for the low-code editor canvas or integration design view to open.
+9. Call ${bt}browser_snapshot${bt} to confirm the canvas/design view is open, then call ${bt}browser_take_screenshot${bt} with the next global sequential number (e.g., ${bt}artifacts/screenshots/[prefix]_step_04_new_integration_canvas.png${bt}) to document the newly created empty integration canvas. This screenshot IS included in the documentation.
 </stage>
 
 <stage id="4" name="Explore Low-Code UI">
@@ -279,7 +281,7 @@ These stages must make the user's goal ACTIONABLE and SPECIFIC — not generic.]
 **Pre-writing checklist (do this BEFORE writing the document):**
 1. List all screenshot files in ${bt}artifacts/screenshots/${bt} for this run's prefix.
    - **Exclude** the Stage 1 workspace screenshot (${bt}[prefix]_step_01_*${bt}).
-   - **Exclude** the Stage 2 BI panel screenshot (${bt}[prefix]_step_02_bi_panel*${bt}) — opening the panel is not a user-facing step.
+   - **Exclude** the Stage 2 integrator panel screenshot (${bt}[prefix]_step_02_integrator_panel*${bt}) — opening the panel is not a user-facing step.
    - **Exclude** the Stage 4 component palette screenshot (${bt}[prefix]_step_NN_component_palette*${bt}) — canvas exploration is agent-only.
    - Every remaining file MUST appear in the document, starting from the Stage 3 integration-name-entry screenshot.
 2. Determine the connector name, operation name, and all parameters configured.
@@ -389,7 +391,7 @@ Save to: ${bt}artifacts/workflow-docs/[goal-slug]-connector-guide.md${bt}
 > This must always be the LAST stage. Do NOT delete any files or folders.
 1. Press **Ctrl+Shift+P** → type **Close Folder** → select **"File: Close Folder"**.
 2. Wait for VS Code to reload, then call ${bt}browser_snapshot${bt} to confirm no workspace is open.
-3. The ${bt}~/bi-workspace${bt} folder remains on disk — integrations are preserved for reference.
+3. The ${bt}~/integrator-workspace${bt} folder remains on disk — integration projects are preserved for reference.
 </stage>
 
 </workflow>
@@ -403,7 +405,7 @@ Save to: ${bt}artifacts/workflow-docs/[goal-slug]-connector-guide.md${bt}
 1. **Focus on the goal** — every action must work toward achieving the specific goal described in the overview.
 2. **Navigate and adapt** — use Playwright MCP tool calls; if a UI element is renamed or missing, find it by label, role, or text.
 3. **Wait** appropriately for resources to load using Playwright MCP wait tools.
-4. **Document** only goal-relevant steps, starting from the WSO2 Integrator: BI integration canvas.
+4. **Document** only goal-relevant steps, starting from the WSO2 Integrator integration canvas.
 
 ### Error Recovery
 - If the low-code interface does not load, **wait and retry** (up to 3 attempts).
@@ -416,7 +418,7 @@ Save to: ${bt}artifacts/workflow-docs/[goal-slug]-connector-guide.md${bt}
 <deliverables>
 ## Deliverables
 1. **Workflow Documentation:** artifacts/workflow-docs/[goal-specific-descriptive-filename].md (e.g., mysql-database-connection-guide.md, http-get-endpoint-creation.md)
-2. **Screenshots:** artifacts/screenshots/[goal_prefix]_step_XX_[description].png — where XX is a **globally unique sequential number** across all stages (e.g., mysql_step_01_vscode_clean.png, mysql_step_02_bi_panel.png, mysql_step_03_connector_palette.png, …). No two screenshots may share the same step number.
+2. **Screenshots:** artifacts/screenshots/[goal_prefix]_step_XX_[description].png — where XX is a **globally unique sequential number** across all stages (e.g., mysql_step_01_vscode_clean.png, mysql_step_02_integrator_panel.png, mysql_step_03_connector_palette.png, …). No two screenshots may share the same step number.
 </deliverables>
 
 ---
@@ -430,7 +432,7 @@ Save to: ${bt}artifacts/workflow-docs/[goal-slug]-connector-guide.md${bt}
 - [Add 3-5 GOAL-SPECIFIC success criteria that describe what a successful outcome looks like. Example: "Kafka connector successfully located and added to canvas", "Connection parameters (host, port, topic) properly configured", "Send operation Record Configuration populated with .toBytes() payload", "Complete Entry Point → Remote Function → End flow visible and connected on canvas with no error indicators"]
 - Primary remote function (Send / Insert / Create / etc.) configured with a valid, functional data template in the Record Configuration panel.
 - Documentation embeds all configured parameters inline within the relevant steps (no separate parameters table).
-- Workflow guide starts from the WSO2 Integrator: BI integration canvas.
+- Workflow guide starts from the WSO2 Integrator integration canvas.
 - Screenshots organized in the screenshots/ directory with goal-specific prefixes.
 - Documentation title and content clearly reflect the specific goal.
 </success_criteria>
