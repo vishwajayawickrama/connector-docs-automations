@@ -131,44 +131,34 @@ You are also a Technical Documentation Specialist — after automation, write th
 ## Workflow Stages
 
 <stage id="1" name="Navigate to Code-Server">
-### Stage 1: Navigate to Code-Server and Create Fresh Workspace
+### Stage 1: Navigate to Code-Server
 1. Navigate to [CODE_SERVER_URL] (the code-server URL from the user message).
 2. Wait for the VS Code interface to fully load (networkidle).
-3. **Open the dedicated workspace folder:**
-   a. Press **Ctrl+Shift+P** → type **Open Folder** → select **"File: Open Folder"**.
-   b. In the path bar, type ${bt}~/integrator-workspace${bt} and press **Enter**. If the folder doesn't exist, use the **"New Folder"** button in the dialog toolbar to create it, then open it.
-   c. If prompted **"Do you trust the authors of the files in this folder?"**, click **"Yes, I trust the authors"**.
-   d. Wait for VS Code to reload to networkidle.
-   > **Workspace path:** ${bt}~/integrator-workspace${bt} — reused across runs; new integration projects are added alongside existing ones.
-4. **If a "Git repository found on parent" popup appears**, dismiss it by clicking **Never**.
-5. **Close the GitHub Copilot Chat panel** if it is open (look for a Copilot chat sidebar or panel — click its X/close button, or use the View menu to hide it).
-6. **Close the integrated terminal** if it is open (look for a terminal panel at the bottom of the editor — click its X/close button or press the close icon on the terminal tab).
-7. **Close ALL open editor tabs** — if any .bal files or source files were auto-opened by VS Code, close every tab in the editor area (click each × on each tab, or use View → Close All Editors). The editor area must be empty with no source files visible.
-8. After closing all panels, tabs, and dismissing popups, call ${bt}browser_snapshot${bt} to confirm a clean empty workspace with no editor tabs open.
+3. **If a "Git repository found on parent" popup appears**, dismiss it by clicking **Never**.
+4. **Close the GitHub Copilot Chat panel** if it is open (look for a Copilot chat sidebar or panel — click its X/close button, or use the View menu to hide it).
+5. **Close the integrated terminal** if it is open (look for a terminal panel at the bottom of the editor — click its X/close button or press the close icon on the terminal tab).
+6. **Close ALL open editor tabs** — if any .bal files or source files were auto-opened by VS Code, close every tab in the editor area (click each × on each tab, or use View → Close All Editors). The editor area must be empty with no source files visible.
+7. After closing all panels, tabs, and dismissing popups, call ${bt}browser_snapshot${bt} to confirm a clean empty workspace with no editor tabs open.
 </stage>
 
 <stage id="2" name="Open WSO2 Integrator">
 ### Stage 2: Open WSO2 Integrator Extension
-1. In the left activity bar of VS Code, locate the **WSO2 Integrator** icon (it may be labelled "WSO2 Integrator", show a WSO2 logo, or appear as a sidebar item after the extension loads).
-2. Click on the WSO2 Integrator icon to open the extension panel.
-3. Wait for the extension view to fully load. If the panel shows a welcome/home screen or a project list, that is the correct state.
-4. Call ${bt}browser_snapshot${bt} to confirm the WSO2 Integrator panel is active.
+1. In the left activity bar of VS Code, locate the **WSO2 Integrator** icon and click it to open the extension panel.
+2. The sidebar panel will show the WSO2 Integrator view with a **"Get Started"** button.
+3. Click the **"Get Started"** button.
+4. The **Welcome page** opens as a new editor tab, showing two cards: **"Create New Project"** and **"Open Project"**.
+5. Call ${bt}browser_snapshot${bt} to confirm the Welcome page is visible with the Create/Open cards.
 </stage>
 
 <stage id="3" name="Create New Integration Project">
 ### Stage 3: Create New Integration Project
-1. Inside the WSO2 Integrator panel, create a new integration project using **whichever method is available** in the current UI:
-   - **Option A:** Look for a **"Create New Project"**, **"New Project"**, or **"+ New Integration"** button on the welcome/home screen of the extension.
-   - **Option B:** Click any **"+"** or **"Create"** button visible in the WSO2 Integrator sidebar panel.
-   - **Option C:** Use the Command Palette (**Ctrl+Shift+P**) → type **"WSO2 Integrator"** → select **"WSO2 Integrator: Create New Project"** or similar command if a button is not visible.
-   - Use whichever option is visible — do NOT delete or overwrite any existing projects.
-2. Click the identified button/command to start the new project creation flow.
-3. When prompted for a project name, enter a **goal-relevant name** that clearly describes the purpose (e.g., "mysql-db-connection", "http-get-endpoint", "salesforce-data-sync"). The name must reflect the user's specific goal.
-4. If any additional fields appear (e.g., version, artifact type, runtime), accept the defaults or choose values appropriate for a low-code integration.
-5. If the name already exists (duplicate), append a version suffix (e.g., "mysql-db-connection-v2") to make it unique.
-6. Confirm/save to create the project.
-7. Wait for the low-code editor canvas or integration design view to open.
-8. Call ${bt}browser_snapshot${bt} to confirm the canvas/design view is open.
+1. On the Welcome page, click the **"Create"** button inside the **"Create New Project"** card.
+2. When prompted for a project name, enter a **goal-relevant name** that clearly describes the purpose (e.g., "mysql-db-connection", "http-get-endpoint", "salesforce-data-sync"). The name must reflect the user's specific goal.
+3. If any additional fields appear (e.g., version, artifact type, runtime), accept the defaults or choose values appropriate for a low-code integration.
+4. If the name already exists (duplicate), append a version suffix (e.g., "mysql-db-connection-v2") to make it unique.
+5. Confirm/save to create the project.
+6. Wait for the low-code editor canvas or integration design view to open.
+7. Call ${bt}browser_snapshot${bt} to confirm the canvas/design view is open.
 </stage>
 
 <stage id="4" name="Explore Low-Code UI">
@@ -353,11 +343,10 @@ Save to: ${bt}artifacts/workflow-docs/[goal-slug]-connector-guide.md${bt}
 </stage>
 
 <stage id="N+1" name="Workspace Cleanup">
-### Stage N+1: Workspace Cleanup (Close Workspace)
+### Stage N+1: Workspace Cleanup
 > This must always be the LAST stage. Do NOT delete any files or folders.
-1. Press **Ctrl+Shift+P** → type **Close Folder** → select **"File: Close Folder"**.
-2. Wait for VS Code to reload, then call ${bt}browser_snapshot${bt} to confirm no workspace is open.
-3. The ${bt}~/integrator-workspace${bt} folder remains on disk — integration projects are preserved for reference.
+1. **Close ALL open editor tabs** — click each × on each tab, or use View → Close All Editors.
+2. Call ${bt}browser_snapshot${bt} to confirm the editor area is clean with no source files visible.
 </stage>
 
 </workflow>

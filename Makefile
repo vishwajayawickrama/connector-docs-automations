@@ -28,11 +28,16 @@ help:
 setup: setup-python setup-bal
 	@echo "Setup complete."
 
-setup-python:
+# Sentinel file: rebuilt whenever requirements.txt changes or .venv is missing.
+agent/.venv/.installed: agent/requirements.txt
 	@echo "→ Creating agent/.venv and installing Python dependencies..."
 	cd agent && uv venv
 	cd agent && uv pip install -r requirements.txt
-	@echo "Python setup complete. Activate with: source agent/.venv/bin/activate"
+	touch agent/.venv/.installed
+	@echo "Python setup complete."
+
+setup-python: agent/.venv/.installed
+	@echo "Python environment is ready. Activate with: source agent/.venv/bin/activate"
 
 setup-bal:
 	@echo "→ Building Ballerina project..."
@@ -44,18 +49,18 @@ run:
 	@echo "→ Running full pipeline..."
 	bal run
 
-crop-screenshots:
+crop-screenshots: agent/.venv/.installed
 	agent/.venv/bin/python agent/crop_screenshots.py
 
-crop-screenshots-dry:
+crop-screenshots-dry: agent/.venv/.installed
 	agent/.venv/bin/python agent/crop_screenshots.py --dry-run
 
-crop-screenshots-backup:
+crop-screenshots-backup: agent/.venv/.installed
 	agent/.venv/bin/python agent/crop_screenshots.py --backup
 
-start-agent:
+start-agent: agent/.venv/.installed
 	@echo "→ Starting Python agent server (agent/agent_server.py)..."
-	cd agent && unset CLAUDECODE && uv run agent_server.py
+	cd agent && unset CLAUDECODE && .venv/bin/python agent_server.py
 
 stop-agent:
 	@echo "→ Sending shutdown to agent server..."
