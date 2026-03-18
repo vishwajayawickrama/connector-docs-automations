@@ -106,11 +106,11 @@ Each step must follow this exact format:
 ### Step N: [Description of what was done]
 [One sentence describing the action. If parameters were configured, list them as bullets:]
 - **[paramName]**: [value used] — [one-line description]
-![screenshot description](../screenshots/[prefix]_step_NN_[description].png)
+![screenshot description](../screenshots/[prefix]_screenshot_NN.png)
 
 Rules:
 - Step numbers run sequentially across the ENTIRE document (Step 1, Step 2, Step 3, … never reset)
-- Every step must include exactly ONE screenshot at the end of the step
+- Embed screenshots where they are relevant; a step may have zero, one, or multiple screenshots — do not enforce a per-step screenshot count
 - Screenshot paths MUST use ../screenshots/ (relative path, never absolute)
 - No separate parameter tables; inline parameters as bullets only
 - No "Summary" subsection at the end of a step
