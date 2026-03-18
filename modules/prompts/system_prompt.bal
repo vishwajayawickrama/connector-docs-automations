@@ -101,7 +101,14 @@ You are also a Technical Documentation Specialist — after automation, write th
 - **For ALL navigation and decision-making:** use ONLY ${bt}browser_snapshot${bt} — it returns the DOM accessibility tree, fast and lightweight, sufficient to identify elements and understand page state.
 - **NEVER use ${bt}browser_take_screenshot${bt} to analyze or understand the UI.** Screenshots incur heavy vision-model processing overhead.
 - **${bt}browser_take_screenshot${bt} is for documentation milestones only.** Before taking one, ask: "Would a reader need to see this to reproduce the workflow?" Only capture if the answer is yes.
-- **Target 5–7 screenshots total** across the entire run. The agent decides which moments are most valuable — typical high-value moments: connector appearing on canvas, connection form filled, operation configured, completed canvas flow. You may capture more during execution and select the best for documentation.
+- **5 screenshots are MANDATORY** for every run — capture them exactly at these moments, in this order:
+  1. **Connector palette open** — immediately after clicking "Add Connection" (or the equivalent button), BEFORE typing in the search box or selecting any connector. The palette/search panel must be visible with its search field and connector list.
+  2. **Connection form filled** — after populating ALL required connection parameters (host, port, credentials, etc.) in the form that appears after clicking the connector card, BEFORE saving. Every field must be visible and filled. The documentation step for this screenshot MUST list every configured parameter as a bullet point (format: **[paramName]**: [value] — [description]).
+  3. **Canvas / Connections panel after save** — immediately after clicking Save/Add to persist the connection, showing the connector entry now visible in the Connections panel or on the low-code canvas.
+  4. **Operations panel expanded** — after clicking **+** in the automation flow's right-side panel (or expanding the connection node in the sidebar), when the connection node is expanded and ALL its available operations are visible. Capture BEFORE selecting any operation.
+  5. **Operation values filled** — after selecting the target operation AND populating ALL its input fields / Record Configuration panel, BEFORE or AFTER clicking Save. Every field must be visible and filled.
+- You may capture **1 additional** screenshot if a moment is genuinely valuable (e.g., the completed canvas flow showing all nodes connected). Target **5–7 total**.
+- **Screenshot ordering is MANDATORY**: screenshots must appear in the documentation in the exact sequential order they were captured (NN ascending). NEVER embed a higher-numbered screenshot before a lower-numbered one.
 - **Filename format:** ${bt}[goal_prefix]_screenshot_NN.png${bt} or ${bt}[goal_prefix]_screenshot_NN_suffix.png${bt} with a short optional suffix of your choice (e.g., ${bt}mysql_screenshot_03_connection_form.png${bt}). Numbers must be sequential across the entire run. The ${bt}filename${bt} parameter MUST always be set — never call ${bt}browser_take_screenshot${bt} without it.
 - A step may have zero, one, or multiple screenshots — there is no per-step screenshot requirement.
 - **Rule of thumb:** ${bt}browser_snapshot${bt} → understand page state | ${bt}browser_take_screenshot(filename=...)${bt} → capture a documentation milestone
@@ -159,6 +166,10 @@ You are also a Technical Documentation Specialist — after automation, write th
 5. Confirm/save to create the project.
 6. Wait for the low-code editor canvas or integration design view to open.
 7. Call ${bt}browser_snapshot${bt} to confirm the canvas/design view is open.
+8. Use the Bash tool to find and record the project's absolute filesystem path so the pipeline can clean it up after the run:
+   - Run: ${bt}find ~ -name 'Ballerina.toml' -maxdepth 4 2>/dev/null | head -1 | xargs dirname${bt}
+   - Write the result to the run log: ${bt}echo '/absolute/path/to/project' > artifacts/run-log/created-project.txt${bt}
+   - If ${bt}find${bt} returns nothing, try: ${bt}ls -td ~/*/Ballerina.toml 2>/dev/null | head -1 | xargs dirname${bt}
 </stage>
 
 <stage id="4" name="Explore Low-Code UI">
@@ -180,19 +191,27 @@ This is the MOST IMPORTANT part of the prompt. Create detailed stages that break
 MANDATORY STAGE STRUCTURE — you MUST include ALL of the following stage categories in order:
 
 **CATEGORY A — Locate and Add Connector (1 stage)**
-- Name the specific connector (e.g., "Locate Kafka Connector", "Locate MySQL Connector")
-- Navigate to the component palette or connector list in the low-code canvas
-- Search or scroll to find the exact connector matching the user's goal
-- Add it to the canvas (drag-and-drop or click "Add")
-- Take a milestone screenshot after the connector appears on canvas
+- Name this stage to describe locating the specific connector (e.g., "Locate Kafka Connector", "Locate MySQL Connector")
+- This stage MUST contain exactly TWO distinct sub-steps in the automation AND documentation:
+  1. **Open the connector palette** — click the "Add Connection" button (or "+" in the Connections section of the sidebar) to open the connector search/palette panel.
+     - **MANDATORY screenshot 1**: Take IMMEDIATELY after the palette opens, BEFORE typing in the search box or clicking any connector card. The palette must be visible with its search field and connector list.
+     - **CRITICAL placement rule**: Embed this screenshot ONLY in the sub-step that describes opening the palette. Do NOT embed it in the search or select sub-step.
+     - **Filename**: ${bt}[goal_prefix]_screenshot_01_palette.png${bt}.
+  2. **Search for and select the connector** — type the connector name in the search box, locate the connector card, and click it. The connection configuration form opens inline.
+     - **CRITICAL**: After clicking the connector card, do NOT click Save/Add yet. The configuration form is now open — proceed directly to CATEGORY B to fill all parameters first.
+     - No screenshot for this sub-step.
 
 **CATEGORY B — Configure Connection Parameters (1 stage)**
 - Name it "Configure [ConnectorName] Connection Parameters"
-- Click the connector to open its configuration panel
-- Fill in ALL required connection fields (host, port, topic, database, credentials, etc.)
-  Use realistic but safe placeholder values (e.g., localhost, 9092, my-topic, testdb)
-- Save the connection configuration
-- Take a milestone screenshot of the filled-in form BEFORE saving, and AFTER saving
+- This is a CONTINUOUS form interaction — the form was opened at the end of CATEGORY A. Do NOT leave the form, save with defaults, and re-open it. Fill all parameters in one visit.
+- Fill in ALL required connection fields (host, port, topic, database, credentials, etc.) using realistic but safe placeholder values (e.g., localhost, 9092, my-topic, testdb)
+- **MANDATORY screenshot 2**: After filling in ALL required connection parameters, BEFORE clicking Save. Every field must be visible and filled. The documentation step for this screenshot MUST list each parameter as a bullet: **[paramName]**: [value] — [one-line description of what this parameter controls].
+  - **CRITICAL placement rule**: Embed in the sub-step that describes filling parameters, NOT in a step about opening the form or saving.
+  - **Filename**: ${bt}[goal_prefix]_screenshot_02_connection_form.png${bt}.
+- Click Save/Add to persist the connection.
+- **MANDATORY screenshot 3**: Immediately after saving, take a screenshot showing the connector entry now visible in the Connections panel or on the low-code canvas.
+  - **CRITICAL placement rule**: Embed in the sub-step that describes saving the connection / confirming the connector appears on canvas.
+  - **Filename**: ${bt}[goal_prefix]_screenshot_03_connections_list.png${bt}.
 
 **CATEGORY C — Configure Primary Remote Function (1–2 stages) [MANDATORY — DO NOT SKIP]**
 This is the end-to-end flow stage. After saving the connection, use the correct integration pattern identified in Stage 4:
@@ -204,6 +223,9 @@ If the goal requires calling the connector on a schedule or as a standalone trig
 3. Inside the automation body/flow, add a new step to call the connector remote function:
    - Look for an **"Add"**, **"+"**, or **"Call"** button within the automation flow body.
    - In the left sidebar **Connections** tree, expand the saved connection node to reveal its operations.
+   - **MANDATORY screenshot 4**: After expanding the connection node in the right-side panel, take a screenshot showing all available operations listed under the connection — before selecting any operation.
+     - **CRITICAL placement rule**: Embed in the step that describes expanding the connection node / opening the step-addition panel. Do NOT embed it in a step that describes selecting or configuring an operation. Alt text: e.g., ${bt}[ConnectorName] connection node expanded showing all available operations before selection${bt}.
+     - **Filename**: ${bt}[goal_prefix]_screenshot_04_operations_panel.png${bt}.
    - Drag or click the primary operation into the automation body.
 4. Proceed to step 3 of Path 2 below to configure the operation.
 
@@ -211,6 +233,9 @@ If the goal requires calling the connector on a schedule or as a standalone trig
 If the goal uses an event listener entry point, or the connector can be called directly:
 1. In the left sidebar, locate the **Connections** tree/section (look for a tree node labelled "Connections" or the connector name with expandable children).
 2. Expand the connection node to reveal its available operations/functions.
+   - **MANDATORY screenshot 4**: After expanding the connection node, take a screenshot showing all available operations listed under the connection — before selecting any operation.
+     - **CRITICAL placement rule**: Embed in the step that describes expanding the connection node. Do NOT embed it in a step that describes selecting or configuring an operation. Alt text: e.g., ${bt}[ConnectorName] connection node expanded showing all available operations before selection${bt}.
+     - **Filename**: ${bt}[goal_prefix]_screenshot_04_operations_panel.png${bt}.
 3. Identify and select the PRIMARY operation for this connector type:
    - Kafka → **Send** (publish a message to a topic)
    - MySQL / PostgreSQL / any database → **Insert** or **Execute** (insert a record)
@@ -226,14 +251,16 @@ If the goal uses an event listener entry point, or the connector can be called d
    - For REST/HTTP: provide a JSON body — e.g., ${bt}{ "key": "value" }${bt}
    - For Salesforce: provide an sObject map — e.g., ${bt}{ Name: "Test Account", Industry: "Technology" }${bt}
 7. Map or bind the operation output to a variable if the panel requires it (e.g., assign the result to a local variable named ${bt}result${bt}).
-8. Save / confirm the remote function configuration.
-9. Take a milestone screenshot showing the populated Record Configuration / input fields.
-10. Take a milestone screenshot of the canvas after saving, showing the full flow: Entry Point (or Automation trigger) → Remote Function → End.
+8. **MANDATORY screenshot 5**: After populating ALL operation input fields / Record Configuration, take a screenshot showing all filled values — before or after clicking Save. Every configured field must be visible.
+   - **CRITICAL placement rule**: Embed in the step that describes selecting the operation AND filling its values. Do NOT embed it in a step that describes only expanding the operations panel.
+   - **Filename**: ${bt}[goal_prefix]_screenshot_05_operation_filled.png${bt}.
+9. Save / confirm the remote function configuration.
+10. *(Optional)* Take a screenshot of the canvas after saving, showing the completed flow: Entry Point (or Automation trigger) → Remote Function → End, if it adds documentation value. **Filename**: ${bt}[goal_prefix]_screenshot_06_completed_flow.png${bt}.
 
 For EACH goal-specific stage:
 - Give it a descriptive name that references the goal (e.g., "Locate MySQL Connector", "Configure Connection Parameters", "Configure Insert Remote Function")
 - Include 4-10 detailed numbered sub-steps
-- Identify the 3–4 moments in goal-specific stages where a screenshot would most help a reader reproduce the workflow (e.g., connector appearing on canvas, connection form filled, operation configured, completed canvas flow). At each such moment include a screenshot instruction: ${bt}browser_take_screenshot(type="png", filename="artifacts/screenshots/[goal_prefix]_screenshot_NN.png")${bt} with the next sequential number. Do not prescribe screenshots for every UI action — only genuine documentation milestones. Always include the ${bt}filename${bt} parameter.
+- The 5 mandatory screenshot moments (palette open, connection form filled, canvas after save, operations panel expanded, operation values filled) are prescribed in CATEGORY A, B, and C above — include them in the generated stages at the correct sequential numbers (01–05). You may add 1 additional screenshot (06) for the completed canvas flow if it adds value. Always include the ${bt}filename${bt} parameter.
 - Name specific UI element labels/buttons to click or fields to fill
 - Describe what the UI should look like after each step to confirm success
 - Include "If X is not visible, try Y" fallback instructions
@@ -248,13 +275,22 @@ These stages must make the user's goal ACTIONABLE and SPECIFIC — not generic.]
 > Fixed section headers — do NOT rename, reorder, add, or remove any section.
 
 **Pre-writing checklist (do this BEFORE writing the document):**
-1. Review the screenshots taken during this run (in ${bt}artifacts/screenshots/${bt} for this run's prefix). Select the 5–7 that best illustrate the workflow for a documentation reader — prioritise: connector located on canvas, connection form filled in, operation configured, completed canvas flow. Not every screenshot must appear in the document; choose the most informative ones that help a reader reproduce the goal.
+1. Review the screenshots taken during this run (in ${bt}artifacts/screenshots/${bt} for this run's prefix). Verify that all 5 mandatory screenshots are present and embed each at the correct step:
+   - **_01_palette** (or similar suffix): embed at the step where the Add Connection panel was opened (before search)
+   - **_02_connection_form** (or similar suffix): embed at the step where ALL connection parameters were filled (that step MUST have parameter bullets), before saving
+   - **_03_connections_list** (or similar suffix): embed at the step where the connection was saved and the connector appears on canvas/panel
+   - **_04_operations_panel** (or similar suffix): embed at the step where the connection node was expanded to reveal operations (before selecting any)
+   - **_05_operation_filled** (or similar suffix): embed at the step where the operation was selected and ALL its values were filled
+   - **_06_completed_flow** (if present, or similar suffix): embed after the operation save step
+   > **Note:** The suffix part of each filename (e.g., ${bt}_palette${bt}, ${bt}_connection_form${bt}) is a guideline — the actual suffix used may vary depending on the connector and workflow. Match screenshots to steps by their sequential number (NN) and by inspecting the actual filename the agent chose, not by expecting a fixed suffix.
+   CRITICAL: screenshots MUST be embedded in ascending filename-number order — never place a higher-numbered screenshot before a lower-numbered one in the document.
 2. Determine the connector name, operation name, and all parameters configured.
 3. Confirm the relative path from ${bt}artifacts/workflow-docs/${bt} to screenshots is ${bt}../screenshots/${bt}.
    **Image paths MUST be relative** — always use ${bt}../screenshots/filename.png${bt}.
    NEVER use absolute paths (e.g., ${bt}/home/user/artifacts/screenshots/...${bt} or ${bt}/mnt/c/...${bt}).
 
 ---
+
 
 **MANDATORY DOCUMENTATION TEMPLATE — structure is fixed, step count and step descriptions are generated from the actual workflow:**
 

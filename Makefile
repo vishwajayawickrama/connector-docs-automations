@@ -1,7 +1,7 @@
 .PHONY: help setup setup-python setup-bal build run \
         start-agent stop-agent \
         crop-screenshots crop-screenshots-dry crop-screenshots-backup \
-        clean clean-artifacts convert-pdf
+        clean clean-artifacts
 
 # ── Default ──────────────────────────────────────────────────────────────────
 help:
@@ -19,8 +19,7 @@ help:
 	@echo "    make stop-agent       Send shutdown request to the agent server"
 	@echo ""
 	@echo "  Artifacts"
-	@echo "    make convert-pdf      Convert workflow-docs markdown files to PDF"
-	@echo "    make clean            Remove all generated artifacts and build output"
+	@echo "    make clean            Remove artifacts/, target/, Dependencies.toml, agent/.venv"
 	@echo "    make clean-artifacts  Remove only the artifacts/ directory"
 	@echo ""
 
@@ -68,13 +67,10 @@ stop-agent:
 	curl -s -X POST http://localhost:8765/shutdown || echo "Agent server not running."
 
 # ── Artifacts ────────────────────────────────────────────────────────────────
-convert-pdf:
-	@echo "→ Converting workflow docs to PDF..."
-	./scripts/convert-to-pdf.sh
-
 clean:
-	@echo "→ Cleaning all generated artifacts and build output..."
-	./scripts/cleanup.sh --force
+	@echo "→ Cleaning artifacts/, target/, Dependencies.toml, agent/.venv..."
+	rm -rf artifacts/ target/ Dependencies.toml agent/.venv
+	@echo "Done."
 
 clean-artifacts:
 	@echo "→ Removing artifacts/ directory..."

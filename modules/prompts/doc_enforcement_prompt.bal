@@ -125,6 +125,51 @@ Preserve every Markdown image reference (the ![alt text](path) syntax) exactly a
 
 ---
 
+## SCREENSHOT PLACEMENT RULES
+
+Each screenshot must be embedded in the step whose **action directly produced what the screenshot shows**. If a screenshot is misplaced, move it to the correct step — do not remove it. There are **5 mandatory screenshots** per run, numbered 01–05 (06 is optional).
+
+**Screenshot 01 — Connector palette open (_01_palette):**
+- MUST be embedded in the step that describes **opening the Add Connection panel** (clicking "Add Connection" or the "+" button in the Connections section).
+- MUST NOT appear in a step that describes searching, selecting a connector card, or filling parameters.
+- If _01_palette is in a search/select step, move it to the step that opens the palette.
+
+**Screenshot 02 — Connection form filled (_02_connection_form):**
+- MUST be embedded in the step that describes **filling in ALL connection parameters** (host, credentials, etc.), before saving.
+- That step MUST list every configured parameter as a bullet: **[paramName]**: [value] — [description].
+- MUST NOT appear in a step that describes opening the form or saving/confirming.
+
+**Screenshot 03 — Canvas / Connections panel after save (_03_connections_list):**
+- MUST be embedded in the step that describes **saving the connection** and confirming the connector is now visible on the canvas or in the Connections panel.
+- MUST NOT appear before the save action or in the form-filling step.
+
+**Screenshot 04 — Operations panel expanded (_04_operations_panel):**
+- MUST be embedded in the step that describes **expanding the connection node** or opening the step-addition panel to reveal available operations — before selecting any operation.
+- MUST NOT appear in a step that describes selecting or configuring an operation.
+
+**Screenshot 05 — Operation values filled (_05_operation_filled):**
+- MUST be embedded in the step that describes **selecting the operation and filling ALL its input fields / Record Configuration** values.
+- MUST NOT appear before any operation fields have been described in that step.
+
+**Screenshot 06 — Completed canvas flow (_06_completed_flow, optional):**
+- If present, embed after the operation save step, showing the completed flow on the canvas.
+
+**Save-then-reopen prohibition:**
+- If the document contains a step that saves the connection with defaults, immediately followed by a step that re-opens the same connection to fill parameters, this is a workflow error.
+- Fix: merge those steps — parameters must be filled in the SAME form visit as the save action. Remove the redundant re-open step.
+
+**Alt text accuracy rule:**
+- Every screenshot alt text must describe (1) what is visible and (2) the point in the workflow.
+- Alt text must match the step action. If they conflict, the screenshot is misplaced — move it.
+- Correct formats:
+  - _01: "[ConnectorName] connector palette open with search field before any selection"
+  - _02: "[ConnectorName] connection form fully filled with all parameters before saving"
+  - _03: "[ConnectorName] Connections panel showing [connectionName] entry after saving"
+  - _04: "[ConnectorName] connection node expanded showing all available operations before selection"
+  - _05: "[ConnectorName] [OperationName] operation configuration filled with all values"
+
+---
+
 ## PROCEDURE
 
 1. Read the entire document
