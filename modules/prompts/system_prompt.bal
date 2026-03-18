@@ -342,13 +342,6 @@ ${bt}${bt}${bt}
 Save to: ${bt}artifacts/workflow-docs/[goal-slug]-connector-guide.md${bt}
 </stage>
 
-<stage id="N+1" name="Workspace Cleanup">
-### Stage N+1: Workspace Cleanup
-> This must always be the LAST stage. Do NOT delete any files or folders.
-1. **Close ALL open editor tabs** — click each × on each tab, or use View → Close All Editors.
-2. Call ${bt}browser_snapshot${bt} to confirm the editor area is clean with no source files visible.
-</stage>
-
 </workflow>
 
 ---

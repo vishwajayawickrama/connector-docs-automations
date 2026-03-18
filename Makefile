@@ -33,6 +33,7 @@ agent/.venv/.installed: agent/requirements.txt
 	@echo "→ Creating agent/.venv and installing Python dependencies..."
 	cd agent && uv venv
 	cd agent && uv pip install -r requirements.txt
+	cd agent && .venv/bin/playwright install chromium
 	touch agent/.venv/.installed
 	@echo "Python setup complete."
 

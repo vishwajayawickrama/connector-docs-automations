@@ -19,7 +19,7 @@ configurable int agentServerPort = 8765;
 # Phase 1  (Steps 1–2):  Pre-flight validation — API key and Claude Code CLI.
 # Phase 2  (Steps 3–5):  Infrastructure     — code-server and Python agent server.
 # Phase 3  (Steps 6–10): Prompt generation  — build, call Claude, format, save.
-# Phase 4  (Steps 11–14): Agent execution  — run agent, enforce doc, crop screenshots, write run log.
+# Phase 4  (Steps 11–15): Agent execution  — run agent, cleanup workspace, enforce doc, crop screenshots, write run log.
 #
 # + return - an error if any step fails
 public function main() returns error? {
@@ -145,11 +145,29 @@ public function main() returns error? {
 
     // ── Phase 4 (cont.): Post-processing ────────────────────────────────────
 
-    // Step 12: Enforce documentation structure via a dedicated Claude API call.
+    // Step 12: Close all editor tabs in code-server (deterministic cleanup, no LLM needed)
+    utils:log("[STEP 12] Workspace cleanup — closing editor tabs in code-server...");
+    os:Process|error cleanupProc = os:exec({
+        value: "agent/.venv/bin/python",
+        arguments: ["agent/cleanup_workspace.py", "--url", codeServerUrl]
+    });
+    if cleanupProc is error {
+        utils:log("\t[WARN] Could not start cleanup_workspace.py: " + cleanupProc.message());
+    } else {
+        int cleanupExit = check cleanupProc.waitForExit();
+        if cleanupExit == 0 {
+            utils:log("\t[INFO] Workspace cleanup complete.");
+        } else {
+            utils:log("\t[WARN] cleanup_workspace.py exited with code " + cleanupExit.toString() + ".");
+        }
+    }
+    utils:log("");
+
+    // Step 13: Enforce documentation structure via a dedicated Claude API call.
     // The agent writes the doc with all browser-automation context in its window;
     // rules stated early in the system prompt get buried. This call has the rules
     // fresh in context with no other noise, so they are reliably applied.
-    utils:log("[STEP 12] Enforcing documentation structure...");
+    utils:log("[STEP 13] Enforcing documentation structure...");
     string workflowDocsDir = "./artifacts/workflow-docs";
     string enforcedDocPath = "";
     file:MetaData[]|file:Error dirEntries = file:readDir(workflowDocsDir);
@@ -190,8 +208,8 @@ public function main() returns error? {
     }
     utils:log("");
 
-    // Step 13: Crop UI chrome from screenshots produced by the agent
-    utils:log("[STEP 13] Cropping screenshots...");
+    // Step 14: Crop UI chrome from screenshots produced by the agent
+    utils:log("[STEP 14] Cropping screenshots...");
     os:Process|error cropProc = os:exec({
         value: "agent/.venv/bin/python",
         arguments: ["agent/crop_screenshots.py"]
@@ -230,8 +248,8 @@ public function main() returns error? {
     }
     decimal totalCombinedCostUsd = totalCostUsd + agentCostUsd;
 
-    // Step 14: Write run log to artifacts/run-log/
-    utils:log("[STEP 14] Writing run log...");
+    // Step 15: Write run log to artifacts/run-log/
+    utils:log("[STEP 15] Writing run log...");
     string runLogDir = "./artifacts/run-log";
     io:Error? keepErr = io:fileWriteString(runLogDir + "/.keep", "");
     if keepErr is io:Error {
