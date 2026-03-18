@@ -185,10 +185,10 @@ Documentation quality is as important as automation quality.
 3. When prompted for a project name, enter a **goal-relevant name** that clearly describes the purpose (e.g., "mysql-db-connection", "http-get-endpoint", "salesforce-data-sync"). The name must reflect the user's specific goal.
 4. If any additional fields appear (e.g., version, artifact type, runtime), accept the defaults or choose values appropriate for a low-code integration.
 5. If the name already exists (duplicate), append a version suffix (e.g., "mysql-db-connection-v2") to make it unique.
-6. **Before clicking Create/Confirm on the final dialog**, call ${bt}browser_take_screenshot${bt} with the next global sequential number to capture the project creation dialog with the name filled in (e.g., ${bt}artifacts/screenshots/[prefix]_step_03_integration_name_entry.png${bt}). This screenshot IS included in the documentation.
+6. **Before clicking Create/Confirm on the final dialog**, call ${bt}browser_take_screenshot${bt} with the next global sequential number to capture the project creation dialog with the name filled in (e.g., ${bt}artifacts/screenshots/[prefix]_step_03_integration_name_entry.png${bt}). This screenshot is for agent reference only and must NOT appear in the documentation.
 7. Confirm/save to create the project.
 8. Wait for the low-code editor canvas or integration design view to open.
-9. Call ${bt}browser_snapshot${bt} to confirm the canvas/design view is open, then call ${bt}browser_take_screenshot${bt} with the next global sequential number (e.g., ${bt}artifacts/screenshots/[prefix]_step_04_new_integration_canvas.png${bt}) to document the newly created empty integration canvas. This screenshot IS included in the documentation.
+9. Call ${bt}browser_snapshot${bt} to confirm the canvas/design view is open, then call ${bt}browser_take_screenshot${bt} with the next global sequential number (e.g., ${bt}artifacts/screenshots/[prefix]_step_04_new_integration_canvas.png${bt}) to document the newly created empty integration canvas. This screenshot is for agent reference only and must NOT appear in the documentation.
 </stage>
 
 <stage id="4" name="Explore Low-Code UI">
@@ -282,8 +282,10 @@ These stages must make the user's goal ACTIONABLE and SPECIFIC — not generic.]
 1. List all screenshot files in ${bt}artifacts/screenshots/${bt} for this run's prefix.
    - **Exclude** the Stage 1 workspace screenshot (${bt}[prefix]_step_01_*${bt}).
    - **Exclude** the Stage 2 integrator panel screenshot (${bt}[prefix]_step_02_integrator_panel*${bt}) — opening the panel is not a user-facing step.
+   - **Exclude** the Stage 3 integration name entry screenshot (${bt}[prefix]_step_03_integration_name_entry*${bt}) — project creation is covered by the shared setup guide.
+   - **Exclude** the Stage 3 new integration canvas screenshot (${bt}[prefix]_step_04_new_integration_canvas*${bt}) — project creation is covered by the shared setup guide.
    - **Exclude** the Stage 4 component palette screenshot (${bt}[prefix]_step_NN_component_palette*${bt}) — canvas exploration is agent-only.
-   - Every remaining file MUST appear in the document, starting from the Stage 3 integration-name-entry screenshot.
+   - Every remaining file MUST appear in the document, starting from the first connector-related screenshot (connector search/add step).
 2. Determine the connector name, operation name, and all parameters configured.
 3. Confirm the relative path from ${bt}artifacts/workflow-docs/${bt} to screenshots is ${bt}../screenshots/${bt}.
    **Image paths MUST be relative** — always use ${bt}../screenshots/filename.png${bt}.
@@ -328,18 +330,9 @@ covered and what API resources will be created, (3) the overall flow assembled o
 
 ## Setting Up the [ConnectorName] Integration
 
-[Generate exactly two steps from Stage 3 only. Do NOT include Stage 1 (workspace setup),
-Stage 2 (opening the BI panel), or Stage 4 (exploring the component palette) — those are
-agent-navigation steps that are not relevant to the user. The document begins from the moment
-the integration name is entered. Number steps starting from 1.]
+> **New to WSO2 Integrator?** Follow the [Create a New Integration Project](../getting-started/create-integration.md) guide to set up your project first, then return here to add the connector.
 
-### Step 1: [Description — e.g., "Create a New Integration Named [integration-name]"]
-[One sentence: describe clicking the Create New Integration button and entering the goal-specific name.]
-![Integration name dialog with name filled in](../screenshots/[prefix]_step_03_integration_name_entry.png)
-
-### Step 2: [Description — e.g., "Open the New [integration-name] Canvas"]
-[One sentence: describe the empty integration canvas that opens after creation.]
-![New empty integration canvas](../screenshots/[prefix]_step_04_new_integration_canvas.png)
+[No numbered steps in this section. Project creation is a common prerequisite covered in the shared guide above. Numbered steps begin in the next section, starting from Step 1.]
 
 ## Adding the [ConnectorName] Connector
 
@@ -405,7 +398,7 @@ Save to: ${bt}artifacts/workflow-docs/[goal-slug]-connector-guide.md${bt}
 1. **Focus on the goal** — every action must work toward achieving the specific goal described in the overview.
 2. **Navigate and adapt** — use Playwright MCP tool calls; if a UI element is renamed or missing, find it by label, role, or text.
 3. **Wait** appropriately for resources to load using Playwright MCP wait tools.
-4. **Document** only goal-relevant steps, starting from the WSO2 Integrator integration canvas.
+4. **Document** only goal-relevant steps, starting from the connector search/add step (the first connector-specific action).
 
 ### Error Recovery
 - If the low-code interface does not load, **wait and retry** (up to 3 attempts).
@@ -426,13 +419,13 @@ Save to: ${bt}artifacts/workflow-docs/[goal-slug]-connector-guide.md${bt}
 <success_criteria>
 ## Success Criteria
 - All low-code steps documented with screenshots for every major UI change — every panel open, form fill, configuration save, connector add, and canvas update has a corresponding screenshot.
-- ALL screenshots taken from Stage 2 onward (every file in artifacts/screenshots/ with this run's prefix except the Stage 1 workspace-setup screenshot) are included in the workflow documentation — none are missing or omitted.
+- ALL connector-related screenshots (every file in artifacts/screenshots/ with this run's prefix except step_01 through step_05) are included in the workflow documentation — none are missing or omitted.
 - No direct code editing performed at any point.
 - No JavaScript/TypeScript script files created — all automation via Playwright MCP tool calls.
 - [Add 3-5 GOAL-SPECIFIC success criteria that describe what a successful outcome looks like. Example: "Kafka connector successfully located and added to canvas", "Connection parameters (host, port, topic) properly configured", "Send operation Record Configuration populated with .toBytes() payload", "Complete Entry Point → Remote Function → End flow visible and connected on canvas with no error indicators"]
 - Primary remote function (Send / Insert / Create / etc.) configured with a valid, functional data template in the Record Configuration panel.
 - Documentation embeds all configured parameters inline within the relevant steps (no separate parameters table).
-- Workflow guide starts from the WSO2 Integrator integration canvas.
+- Workflow guide starts from the connector search step (Step 1), with the "Setting Up" section containing only the shared project-creation redirect link.
 - Screenshots organized in the screenshots/ directory with goal-specific prefixes.
 - Documentation title and content clearly reflect the specific goal.
 </success_criteria>

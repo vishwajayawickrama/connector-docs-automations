@@ -40,6 +40,7 @@ Replace [ConnectorName] with the actual connector name already present in the do
 12. Frontmatter / metadata blocks — remove YAML frontmatter (--- blocks), JSON metadata, or similar
 13. Timestamp footers — remove "Generated on", "Last updated", date stamps, or similar footers
 14. Summary / Conclusion sections — remove any H2 or H3 named "Summary", "Conclusion", "Next Steps", "Recap", or similar closing prose sections
+15. Numbered steps in the "Setting Up" section — the ## Setting Up section must contain ONLY the redirect note linking to the shared project-creation guide; remove any ### Step N headers, screenshot image references, or inline parameters from this section
 
 ---
 
@@ -58,6 +59,13 @@ Rules:
 - Replace [ConnectorName] and [OperationName] with the actual names from the document
 - Do NOT rename, reorder, add, or remove sections (except omitting Prerequisites when appropriate)
 - Do NOT add section numbers to H2 headers (e.g. "## 1. What You'll Build" is wrong)
+
+### ## Setting Up the [ConnectorName] Integration
+
+This section MUST contain ONLY the redirect note linking to the shared project-creation guide.
+It must NOT contain any numbered steps (### Step N headers), screenshot image references, or parameter bullets.
+If steps or images are present in this section, remove them entirely.
+Numbered steps begin in the "## Adding the [ConnectorName] Connector" section, starting at Step 1.
 
 ### ## What You'll Build
 
