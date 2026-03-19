@@ -182,7 +182,7 @@ jobs:
           cp artifacts/workflow-docs/*.md "$DIR_NAME/workflow-docs/" 2>/dev/null || true
           cp artifacts/screenshots/*.png  "$DIR_NAME/screenshots/"  2>/dev/null || true
 
-      # ── 14. Push to Generated-Connector-Documentation and open a PR ──────────
+      # ── 14. Push to Generated-Connector-Documentation. and open a PR ─────────
       # Requires the DOCS_REPO_TOKEN secret: a PAT with `repo` scope on
       # vishwajayawickrama/Generated-Connector-Documentation.
       - name: Push to docs repo and create PR
@@ -203,7 +203,7 @@ jobs:
           git config --global user.name "github-actions[bot]"
 
           git clone \
-            "https://x-access-token:${DOCS_REPO_TOKEN}@github.com/vishwajayawickrama/Generated-Connector-Documentation.git" \
+            "https://x-access-token:${DOCS_REPO_TOKEN}@github.com/vishwajayawickrama/Generated-Connector-Documentation..git" \
             target-repo
 
           cd target-repo
@@ -230,7 +230,7 @@ jobs:
             --body-file /tmp/pr-body.md \
             --base main \
             --head "$BRANCH_NAME" \
-            --repo vishwajayawickrama/Generated-Connector-Documentation
+            --repo "vishwajayawickrama/Generated-Connector-Documentation."
 
       # ── 15. Upload artifacts ──────────────────────────────────────────────────
       # Always upload — even on failure — so partial outputs (e.g. execution prompt

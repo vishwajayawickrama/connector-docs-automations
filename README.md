@@ -432,7 +432,7 @@ Add these in your repo at **Settings → Secrets and variables → Actions → N
 | Secret | Required | Description |
 |--------|----------|-------------|
 | `LLM_API_KEY` | ✅ Yes | Anthropic API key — used by the Ballerina pipeline (prompt generation + doc enforcement) and by the Claude Code CLI subprocess (agent execution) |
-| `DOCS_REPO_TOKEN` | ✅ Yes | GitHub Personal Access Token (PAT) — used to clone, push a branch, and open a PR in `vishwajayawickrama/Generated-Connector-Documentation` |
+| `DOCS_REPO_TOKEN` | ✅ Yes | GitHub Personal Access Token (PAT) — used to clone, push a branch, and open a PR in `vishwajayawickrama/Generated-Connector-Documentation.` |
 
 #### `LLM_API_KEY`
 
@@ -442,7 +442,7 @@ Add these in your repo at **Settings → Secrets and variables → Actions → N
 
 #### `DOCS_REPO_TOKEN`
 
-The workflow does three things with this token against `vishwajayawickrama/Generated-Connector-Documentation`:
+The workflow does three things with this token against `vishwajayawickrama/Generated-Connector-Documentation.`:
 - **Clone** the repo via HTTPS (`x-access-token:<token>@github.com/...`)
 - **Push** a new branch with the generated docs
 - **Create a PR** via the `gh` CLI (`GH_TOKEN`)
@@ -463,7 +463,7 @@ The workflow does three things with this token against `vishwajayawickrama/Gener
 6. Click **Generate token** — copy it immediately (shown only once)
 7. Add it as a secret named `DOCS_REPO_TOKEN` in **this** repository
 
-> **Note:** The token must have access to `vishwajayawickrama/Generated-Connector-Documentation`. If that repo is owned by a different user or org, ensure the token belongs to an account that has `write` access to it.
+> **Note:** The token must have access to `vishwajayawickrama/Generated-Connector-Documentation.`. If that repo is owned by a different user or org, ensure the token belongs to an account that has `write` access to it.
 
 ### Required GitHub Environment
 
@@ -487,7 +487,7 @@ Trigger via **Actions → Connector Documentation Automation → Run workflow**:
 
 On a successful run:
 
-1. **A branch and PR** in `vishwajayawickrama/Generated-Connector-Documentation`:
+1. **A branch and PR** in `vishwajayawickrama/Generated-Connector-Documentation.`:
    - Branch: `[connector-name]-example-document`
    - Directory: `[connector-name]-connector-example-documentation/workflow-docs/` + `/screenshots/`
 2. **GitHub Actions artifact** (retained 30 days) named `[connector-name]-connector-example-documentation-[run_id]`:
