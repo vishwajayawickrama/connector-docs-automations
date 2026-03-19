@@ -51,6 +51,7 @@ jobs:
           cd agent
           uv venv
           uv pip install -r requirements.txt
+          .venv/bin/playwright install chromium --with-deps
 
       # ── 4. Node.js ───────────────────────────────────────────────────────────
       - name: Set up Node.js
@@ -118,7 +119,30 @@ jobs:
           print("Config.toml written successfully.")
           PYEOF
 
-      # ── 10. Run the full pipeline ────────────────────────────────────────────
+      # ── 10. Start Python agent server ────────────────────────────────────────
+      # Start the agent server in the background before bal run so the pipeline's
+      # Step 5 (agent server check) finds it already running and skips auto-start.
+      # CLAUDECODE is unset to allow the SDK to spawn its own Claude Code subprocess.
+      - name: Start Python agent server
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.LLM_API_KEY }}
+        run: |
+          cd agent
+          unset CLAUDECODE
+          nohup .venv/bin/python agent_server.py --port 8765 &
+          echo "Waiting for agent server to be ready..."
+          for i in $(seq 1 20); do
+            if curl -s http://localhost:8765/health > /dev/null 2>&1; then
+              echo "Agent server is ready."
+              exit 0
+            fi
+            echo "Attempt $i/20..."
+            sleep 1
+          done
+          echo "Agent server did not become ready within 20 seconds."
+          exit 1
+
+      # ── 11. Run the full pipeline ────────────────────────────────────────────
       # Authentication:
       # - Ballerina (ai_client.bal) reads llmApiKey from Config.toml (written in step 9).
       # - ANTHROPIC_API_KEY is set here so the 'claude' subprocess spawned by the
