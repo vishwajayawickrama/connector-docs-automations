@@ -1,6 +1,6 @@
 # Connector Docs Automation
 
-An AI-driven pipeline that uses **Ballerina** + **Claude (Anthropic)** + **Claude Agent SDK** to fully automate WSO2 Integrator: BI low-code workflow documentation. The pipeline generates a detailed browser-automation prompt via Claude, then runs a Python agent server that executes the prompt end-to-end inside a **code-server** (in-browser VS Code) instance using Playwright MCP — capturing screenshots and producing step-by-step workflow documentation with no manual interaction.
+An AI-driven pipeline that uses **Ballerina** + **Claude (Anthropic)** + **Claude Agent SDK** to fully automate WSO2 Integrator low-code workflow documentation. The pipeline generates a detailed browser-automation prompt via Claude, then runs a Python agent server that executes the prompt end-to-end inside a **code-server** (in-browser VS Code) instance using Playwright MCP — capturing screenshots and producing step-by-step workflow documentation with no manual interaction.
 
 ```
 Goal → Claude generates XML-tagged execution prompt → Python Agent SDK executes it via Playwright MCP → Artifacts
@@ -290,7 +290,7 @@ codeServerPort = 8080
 agentServerPort = 8765
 
 # Automation goal
-userGoal = "Create an HTTP GET endpoint that returns Hello World using Ballerina Integrator"
+userGoal = "Create an HTTP GET endpoint that returns Hello World using WSO2 Integrator"
 ```
 
 > **Note:** `Config.toml` is git-ignored and must never be committed.
@@ -341,7 +341,7 @@ cd agent && uv run agent_server.py --port 9000
 
 ## code-server
 
-The automation target is a **code-server** instance (VS Code in the browser) with the **WSO2 Integrator: BI** extension installed. Start it manually if needed:
+The automation target is a **code-server** instance (VS Code in the browser) with the **WSO2 Integrator** extension installed. Start it manually if needed:
 
 ```bash
 code-server --auth none --bind-addr 0.0.0.0:8080
@@ -464,7 +464,7 @@ npm install -g @playwright/mcp@latest
 - [uv — Python package manager](https://docs.astral.sh/uv/)
 - [aiohttp](https://docs.aiohttp.org/)
 - [code-server](https://github.com/coder/code-server)
-- [WSO2 Integrator: BI](https://wso2.com/integrator/)
+- [WSO2 Integrator](https://wso2.com/integrator/)
 
 ---
 

@@ -8,12 +8,30 @@ type StartResponse record {
     string job_id;
 };
 
+# Structured cost data returned by the agent server once the job completes.
+public type AgentCost record {
+    # Total USD cost reported by the Claude Agent SDK (nil if not available)
+    decimal? totalCostUsd;
+    # Input tokens consumed across the entire agent run
+    int inputTokens;
+    # Output tokens generated across the entire agent run
+    int outputTokens;
+    # Cache read tokens (prompt caching)
+    int cacheReadTokens;
+    # Cache write tokens (prompt caching)
+    int cacheWriteTokens;
+    # Number of conversation turns in the agent run (nil if not available)
+    int? numTurns;
+};
+
 # Poll response for a running or completed agent job.
 type JobStatus record {
     # "running" or "done"
     string status;
     # Accumulated log lines in "[LABEL] text" format
     string[] logs;
+    # Structured cost data — present only after the job completes
+    AgentCost? cost;
 };
 
 # Submits the execution prompt to the Python agent server and streams its log
@@ -21,8 +39,8 @@ type JobStatus record {
 #
 # + promptPath - absolute or relative path to the generated execution prompt file
 # + agentUrl   - base URL of the Python agent server (e.g. http://localhost:8765)
-# + return     - an error if the submission or polling fails
-public function runClaudeAgent(string promptPath, string agentUrl) returns error? {
+# + return     - AgentCost if available, nil if cost data was absent, or an error
+public function runClaudeAgent(string promptPath, string agentUrl) returns AgentCost?|error {
     http:Client agentClient = check new (agentUrl, timeout = 600);
 
     // Submit the job
@@ -54,9 +72,8 @@ public function runClaudeAgent(string promptPath, string agentUrl) returns error
         lastLogCount = jobStatus.logs.length();
 
         if jobStatus.status == "done" {
-            break;
+            utils:log("\t[INFO] Claude agent finished.");
+            return jobStatus.cost;
         }
     }
-
-    utils:log("\t[INFO] Claude agent finished.");
 }

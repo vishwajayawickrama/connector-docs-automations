@@ -40,6 +40,30 @@ const string ANTHROPIC_BASE_URL = "https://api.anthropic.com";
 # Anthropic API version header value.
 const string ANTHROPIC_VERSION = "2023-06-01";
 
+# Claude Sonnet 4.6 pricing: $3.00 per million input tokens.
+final decimal INPUT_COST_PER_TOKEN = 0.000003d;
+
+# Claude Sonnet 4.6 pricing: $15.00 per million output tokens.
+final decimal OUTPUT_COST_PER_TOKEN = 0.000015d;
+
+# Token usage and USD cost for a single LLM API call.
+public type LlmUsage record {
+    # Number of input (prompt) tokens consumed
+    int inputTokens;
+    # Number of output (completion) tokens generated
+    int outputTokens;
+    # Estimated cost in USD based on model pricing
+    decimal costUsd;
+};
+
+# Result of a Claude API call — the generated text plus token usage/cost.
+public type LlmResult record {
+    # The generated text content
+    string text;
+    # Token usage and cost for this call
+    LlmUsage usage;
+};
+
 # Validates the Anthropic API key by sending a minimal test request.
 # Logs a clean success message or extracts and displays error details.
 # Fails fast before the expensive pipeline calls run.
@@ -93,13 +117,13 @@ public function validateApiKey(string apiKey) returns error? {
     return error(string `Anthropic API key validation failed (HTTP ${statusCode}): ${errorMsg}`);
 }
 
-# Sends the system and user prompts to Claude and returns the generated text content.
+# Sends the system and user prompts to Claude and returns the generated text plus usage.
 #
 # + systemPrompt - the system prompt instructing the model
 # + userMessage - the user message with the goal details
 # + apiKey - the Anthropic API key
-# + return - the generated execution prompt or an error
-public function callClaude(string systemPrompt, string userMessage, string apiKey) returns string|error {
+# + return - LlmResult with text and token usage/cost, or an error
+public function callClaude(string systemPrompt, string userMessage, string apiKey) returns LlmResult|error {
     utils:log("\t[INFO] Model:              " + DEFAULT_MODEL);
     utils:log("\t[INFO] System prompt len:  " + systemPrompt.length().toString() + " chars");
     utils:log("\t[INFO] User message len:   " + userMessage.length().toString() + " chars");
@@ -159,22 +183,28 @@ public function callClaude(string systemPrompt, string userMessage, string apiKe
 
     utils:log("\t[INFO] Response received. Length: " + resultText.length().toString() + " chars");
 
+    LlmUsage usageData = {inputTokens: 0, outputTokens: 0, costUsd: 0.0d};
     UsageInfo? usage = msgResp.usage;
     if usage is UsageInfo {
-        utils:log("\t[INFO] Tokens used — Input: " + usage.input_tokens.toString()
-            + " | Output: " + usage.output_tokens.toString()
-            + " | Total: " + (usage.input_tokens + usage.output_tokens).toString());
+        int inTok = usage.input_tokens;
+        int outTok = usage.output_tokens;
+        decimal cost = (<decimal>inTok * INPUT_COST_PER_TOKEN) + (<decimal>outTok * OUTPUT_COST_PER_TOKEN);
+        usageData = {inputTokens: inTok, outputTokens: outTok, costUsd: cost};
+        utils:log("\t[USAGE] Input: " + inTok.toString()
+            + " | Output: " + outTok.toString()
+            + " | Total: " + (inTok + outTok).toString()
+            + " | Cost: $" + cost.toString());
     }
 
-    return resultText;
+    return {text: resultText, usage: usageData};
 }
 
 # Asks the LLM to generate a short 3-4 word filename-safe slug from the goal.
 #
 # + goal - the full goal description
 # + apiKey - the Anthropic API key
-# + return - a sanitized hyphenated slug or an error
-public function generateGoalSlug(string goal, string apiKey) returns string|error {
+# + return - LlmResult with the sanitized slug as text and token usage/cost, or an error
+public function generateGoalSlug(string goal, string apiKey) returns LlmResult|error {
     utils:log("\t[INFO] Generating short filename slug from goal...");
 
     json payload = {
@@ -236,6 +266,18 @@ public function generateGoalSlug(string goal, string apiKey) returns string|erro
         slug = "unnamed-goal";
     }
 
+    LlmUsage usageData = {inputTokens: 0, outputTokens: 0, costUsd: 0.0d};
+    UsageInfo? usage = msgResp.usage;
+    if usage is UsageInfo {
+        int inTok = usage.input_tokens;
+        int outTok = usage.output_tokens;
+        decimal cost = (<decimal>inTok * INPUT_COST_PER_TOKEN) + (<decimal>outTok * OUTPUT_COST_PER_TOKEN);
+        usageData = {inputTokens: inTok, outputTokens: outTok, costUsd: cost};
+        utils:log("\t[USAGE] Input: " + inTok.toString()
+            + " | Output: " + outTok.toString()
+            + " | Cost: $" + cost.toString());
+    }
+
     utils:log("\t[INFO] Generated slug: " + slug);
-    return slug;
+    return {text: slug, usage: usageData};
 }

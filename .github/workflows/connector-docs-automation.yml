@@ -77,17 +77,17 @@ jobs:
       - name: Install code-server
         run: curl -fsSL https://code-server.dev/install.sh | sh
 
-      # ── 8. WSO2 Ballerina Integrator extension ───────────────────────────────
+      # ── 8. WSO2 Integrator extension ─────────────────────────────────────────
       # code-server defaults to open-vsx.org; WSO2 extensions live on the VS Code
       # marketplace, so we set the gallery env vars to point there instead.
       # Extensions land in ~/.local/share/code-server/extensions/ and are loaded
       # automatically when code-server starts during the pipeline.
-      - name: Install WSO2 Ballerina Integrator extension
+      - name: Install WSO2 Integrator extension
         env:
           VSCODE_GALLERY_SERVICE_URL: "https://marketplace.visualstudio.com/_apis/public/gallery"
           VSCODE_GALLERY_CACHE_URL: "https://vscodeexgallery.azureedge.net"
           VSCODE_GALLERY_ITEM_URL: "https://marketplace.visualstudio.com/items"
-        run: code-server --install-extension WSO2.ballerina-integrator
+        run: code-server --install-extension wso2.wso2-integrator
 
       # ── 9. Claude Pro credentials ────────────────────────────────────────────
       # Writes ~/.claude/.credentials.json from two GitHub secrets:
