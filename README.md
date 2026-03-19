@@ -1,4 +1,4 @@
-# Connector Docs Automation
+# WSO2 Integrator Connector Docs Automation
 
 An AI-driven pipeline that uses **Ballerina** + **Claude (Anthropic)** + **Claude Agent SDK** to fully automate WSO2 Integrator low-code workflow documentation. The pipeline generates a detailed browser-automation prompt via Claude, then runs a Python agent server that executes the prompt end-to-end inside a **code-server** (in-browser VS Code) instance using Playwright MCP — capturing screenshots and producing step-by-step workflow documentation with no manual interaction.
 
@@ -19,6 +19,7 @@ Goal → Claude generates XML-tagged execution prompt → Python Agent SDK execu
 | uv | latest | [docs.astral.sh/uv](https://docs.astral.sh/uv/getting-started/installation/) |
 | Node.js | LTS+ | [nodejs.org](https://nodejs.org/) |
 | Playwright MCP | latest | `npm install -g @playwright/mcp@latest` |
+| Claude Code CLI | latest | [claude.ai/code](https://claude.ai/code) |
 | code-server | latest | [github.com/coder/code-server](https://github.com/coder/code-server) |
 
 ### Setup
@@ -26,7 +27,7 @@ Goal → Claude generates XML-tagged execution prompt → Python Agent SDK execu
 **1. Clone and enter project**
 
 ```bash
-cd connector-docs-automation
+cd connector-docs-automations
 ```
 
 **2. Create Config.toml**
@@ -49,11 +50,11 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 **4. Set up all dependencies**
 
 ```bash
-# Install Ballerina deps + create agent/.venv + install Python deps
+# Install Ballerina deps + create agent/.venv + install Python deps + install Playwright Chromium
 make setup
 
 # Or step by step:
-make setup-python   # creates agent/.venv, installs aiohttp + claude-agent-sdk
+make setup-python   # creates agent/.venv, installs Python deps, installs Playwright Chromium
 make setup-bal      # runs bal build
 ```
 
@@ -69,7 +70,7 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 $env:ANTHROPIC_API_KEY = "sk-ant-..."
 ```
 
-> The same key also goes into `Config.toml` as `anthropicApiKey` for the Ballerina steps.
+> The same key also goes into `Config.toml` as `llmApiKey` for the Ballerina steps.
 
 **6. Run the full pipeline**
 
@@ -88,22 +89,25 @@ The pipeline automatically installs/starts code-server and the Python agent serv
 
 ```
 .
-├── main.bal                         # Entry point — orchestrates the 8-step pipeline
+├── main.bal                         # Entry point — orchestrates the 16-step pipeline
 ├── Ballerina.toml                   # Ballerina package manifest & dependencies
 ├── Config.toml                      # Runtime configuration (git-ignored)
 ├── Config.toml.example              # Template for Config.toml
 ├── Dependencies.toml                # Resolved Ballerina dependency lock file
 ├── Makefile                         # All common commands (setup, run, clean, etc.)
 │
-├── agent/                           # Python Claude Agent SDK server
+├── agent/                           # Python Claude Agent SDK server + post-processing scripts
 │   ├── agent_server.py              # aiohttp HTTP server wrapping claude-agent-sdk
+│   ├── crop_screenshots.py          # Post-processing: crops UI chrome from screenshots
+│   ├── append_examples_link.py      # Post-processing: appends Ballerina Central examples link
+│   ├── cleanup_workspace.py         # Post-processing: closes editor tabs in code-server
 │   ├── pyproject.toml               # Python package manifest
 │   ├── requirements.txt             # Pinned Python dependencies
 │   └── .venv/                       # Python virtual environment (git-ignored)
 │
 ├── modules/                         # Ballerina sub-modules
 │   ├── ai_client/
-│   │   └── ai_client.bal            # Claude API calls (validate, generate, slug)
+│   │   └── ai_client.bal            # Claude API calls (validate, generate, slug, doc enforcement)
 │   ├── agent_client/
 │   │   └── agent_client.bal         # REST client for the Python agent server
 │   ├── prompts/
@@ -115,10 +119,6 @@ The pipeline automatically installs/starts code-server and the Python agent serv
 │       ├── code_server_utils.bal    # code-server health check & startup
 │       └── python_server_utils.bal  # Python agent server health check & startup
 │
-├── scripts/                         # Utility scripts (cross-platform)
-│   ├── cleanup.sh / cleanup.ps1     # Remove generated artifacts and build output
-│   └── convert-to-pdf.sh / .ps1    # Convert workflow docs to PDF
-│
 ├── .mcp.json                        # Claude Code MCP server config (Playwright)
 ├── .claude/
 │   ├── settings.json                # Claude Code permissions & model config
@@ -129,7 +129,9 @@ The pipeline automatically installs/starts code-server and the Python agent serv
     │   └── <slug>_execution_prompt_<timestamp>.md
     ├── workflow-docs/               # Step-by-step workflow guides with screenshots
     │   └── *.md
-    └── screenshots/                 # Captured browser screenshots
+    ├── screenshots/                 # Captured browser screenshots (cropped)
+    └── run-log/                     # JSON run logs with cost and timing stats
+        └── <slug>_<timestamp>.json
 ```
 
 ---
@@ -137,22 +139,26 @@ The pipeline automatically installs/starts code-server and the Python agent serv
 ## Makefile Reference
 
 ```
-make help             Show this reference
+make help                   Show this reference
 
 Setup
-  make setup          Install all deps (Python venv + Ballerina build)
-  make setup-python   Create agent/.venv and install Python deps
-  make setup-bal      Build the Ballerina project (bal build)
+  make setup                Install all deps (Python venv + Playwright Chromium + Ballerina build)
+  make setup-python         Create agent/.venv, install Python deps, install Playwright Chromium
+  make setup-bal            Build the Ballerina project (bal build)
 
 Run
-  make run            Run the full 8-step pipeline (bal run)
-  make start-agent    Start the Python agent server in the foreground
-  make stop-agent     Send shutdown request to the running agent server
+  make run                  Run the full 16-step pipeline (bal run)
+  make start-agent          Start the Python agent server in the foreground
+  make stop-agent           Send shutdown request to the running agent server
+
+Screenshots
+  make crop-screenshots     Crop UI chrome from all screenshots in artifacts/screenshots/
+  make crop-screenshots-dry Preview what would be cropped (no changes made)
+  make crop-screenshots-backup Crop screenshots and keep originals as .bak files
 
 Artifacts
-  make convert-pdf    Convert workflow-docs markdown files to PDF
-  make clean          Remove all artifacts/ and target/ (with confirmation)
-  make clean-artifacts Remove only the artifacts/ directory
+  make clean                Remove artifacts/, target/, Dependencies.toml, agent/.venv
+  make clean-artifacts      Remove only the artifacts/ directory
 ```
 
 ---
@@ -162,114 +168,157 @@ Artifacts
 ```
 ┌──────────────────────────────┐
 │  Goal defined in Config.toml  │
-└──────────────┬───────────────┘
-               │
-    ┌──────────▼──────────────────────────────────────────┐
-    │  Step 0a: Is code-server installed?                  │
-    │  code-server --version                               │
-    └──────────┬──────────────────────┬───────────────────┘
-               │ installed            │ not installed
-               │                      ▼
-               │           ┌──────────────────────┐
-               │           │  curl -fsSL           │
-               │           │  code-server.dev/     │
-               │           │  install.sh | sh      │
-               │           └──────────┬────────────┘
-               │                      │ success / error
-               └──────────────────────┘
-               │
-    ┌──────────▼──────────────────────────────────────────┐
-    │  Step 0b: Is code-server running?                    │
-    │  curl http://localhost:<port> (3s timeout)           │
-    └──────────┬──────────────────────┬───────────────────┘
-               │ already running      │ not running
-               │                      ▼
-               │           ┌──────────────────────┐
-               │           │  Auto-start:          │
-               │           │  code-server          │
-               │           │  --auth none          │
-               │           │  --bind-addr          │
-               │           │  0.0.0.0:<port>       │
-               │           └──────────┬────────────┘
-               │                      │ poll (15 attempts)
-               └──────────────────────┘
-               │
-    ┌──────────▼──────────┐
-    │  Step 1: Validate    │
-    │  Anthropic API key   │
-    └──────────┬──────────┘
-               │
-    ┌──────────▼──────────┐
-    │  Step 2: Build       │
-    │  system + user       │
-    │  prompts             │
-    └──────────┬──────────┘
-               │
-    ┌──────────▼──────────┐
-    │  Step 3: Claude API  │
-    │  (Sonnet 4.6) generates│
-    │  XML-tagged prompt   │
-    └──────────┬──────────┘
-               │
-    ┌──────────▼──────────┐
-    │  Step 4: Claude      │
-    │  generates filename  │
-    │  slug from goal      │
-    └──────────┬──────────┘
-               │
-    ┌──────────▼────────────────────────┐
-    │  Step 5: Format prompt with       │
-    │  XML header                       │
-    └──────────┬────────────────────────┘
-               │
-    ┌──────────▼────────────────────────┐
-    │  Step 6: Save to                  │
-    │  artifacts/execution-prompt/      │
-    │  → returns file path              │
-    └──────────┬────────────────────────┘
-               │
-    ┌──────────▼──────────────────────────────────────────┐
-    │  Step 7: Is Python agent server running?             │
-    │  curl http://localhost:<agentPort>/health (3s)       │
-    └──────────┬──────────────────────┬───────────────────┘
-               │ already running      │ not running
-               │                      ▼
-               │           ┌──────────────────────┐
-               │           │  cd agent &&          │
-               │           │  uv run               │
-               │           │  agent_server.py      │
-               │           │  --port <agentPort>   │
-               │           └──────────┬────────────┘
-               │                      │ poll /health (20 attempts)
-               └──────────────────────┘
-               │
-    ┌──────────▼──────────────────────────┐
-    │  Step 8: POST /run to agent server   │
-    │  { "prompt_path": "<path>" }         │
-    │  Poll /jobs/<id> every 1s            │
-    │  Stream [SESSION/CLAUDE/TOOL/RESULT] │
-    │  logs until status == "done"         │
-    └──────────┬──────────────────────────┘
-               │
-    ┌──────────▼──────────────────────────┐
-    │  artifacts/screenshots/             │
-    │  artifacts/workflow-docs/           │
-    │  artifacts/execution-prompt/        │
-    └─────────────────────────────────────┘
+└──────────┬───────────────────┘
+           │
+    ═══════════════════════════════════════════════════════
+    PHASE 1 — Pre-flight validation (Steps 1–2)
+    ═══════════════════════════════════════════════════════
+           │
+    ┌──────▼──────────────────────┐
+    │  Step 1: Validate API key    │
+    │  (Anthropic ping)            │
+    └──────┬──────────────────────┘
+           │
+    ┌──────▼──────────────────────┐
+    │  Step 2: Check Claude Code   │
+    │  CLI is installed            │
+    └──────┬──────────────────────┘
+           │
+    ═══════════════════════════════════════════════════════
+    PHASE 2 — Infrastructure (Steps 3–5)
+    ═══════════════════════════════════════════════════════
+           │
+    ┌──────▼────────────────────────────────────────────┐
+    │  Step 3: Is code-server binary installed?          │
+    │  code-server --version                             │
+    └──────┬───────────────────────┬───────────────────┘
+           │ installed             │ not installed
+           │                       ▼
+           │            ┌──────────────────────┐
+           │            │  curl -fsSL           │
+           │            │  code-server.dev/     │
+           │            │  install.sh | sh      │
+           │            └──────────┬────────────┘
+           └───────────────────────┘
+           │
+    ┌──────▼────────────────────────────────────────────┐
+    │  Step 4: Is code-server running?                   │
+    │  curl http://localhost:<port> (3s timeout)         │
+    └──────┬───────────────────────┬───────────────────┘
+           │ already running       │ not running → auto-start + poll
+           └───────────────────────┘
+           │
+    ┌──────▼────────────────────────────────────────────┐
+    │  Step 5: Is Python agent server running?           │
+    │  curl http://localhost:<agentPort>/health (3s)     │
+    └──────┬───────────────────────┬───────────────────┘
+           │ already running       │ not running → auto-start + poll
+           └───────────────────────┘
+           │
+    ═══════════════════════════════════════════════════════
+    PHASE 3 — Prompt generation (Steps 6–10)
+    ═══════════════════════════════════════════════════════
+           │
+    ┌──────▼──────────────────────┐
+    │  Step 6: Build system +      │
+    │  user prompts                │
+    └──────┬──────────────────────┘
+           │
+    ┌──────▼──────────────────────┐
+    │  Step 7: Claude Sonnet 4.6   │
+    │  generates execution prompt  │
+    │  (up to 16 000 tokens)       │
+    └──────┬──────────────────────┘
+           │
+    ┌──────▼──────────────────────┐
+    │  Step 8: Claude generates    │
+    │  filename slug from goal     │
+    └──────┬──────────────────────┘
+           │
+    ┌──────▼──────────────────────┐
+    │  Step 9: Add Markdown header │
+    │  to the execution prompt     │
+    └──────┬──────────────────────┘
+           │
+    ┌──────▼──────────────────────────────────┐
+    │  Step 10: Save to                        │
+    │  artifacts/execution-prompt/             │
+    │  → returns file path                     │
+    └──────┬──────────────────────────────────┘
+           │
+    ═══════════════════════════════════════════════════════
+    PHASE 4 — Agent execution & post-processing (Steps 11–16)
+    ═══════════════════════════════════════════════════════
+           │
+    ┌──────▼──────────────────────────────────────────────┐
+    │  Step 11: POST /run to agent server                  │
+    │  { "prompt_path": "<path>" }                         │
+    │  Poll /jobs/<id> every 1s                            │
+    │  Stream [SESSION/CLAUDE/TOOL/RESULT/USAGE] logs      │
+    │  until status == "done"                              │
+    └──────┬──────────────────────────────────────────────┘
+           │
+    ┌──────▼──────────────────────┐
+    │  Step 12: Workspace cleanup  │
+    │  Close all editor tabs in    │
+    │  code-server                 │
+    └──────┬──────────────────────┘
+           │
+    ┌──────▼──────────────────────┐
+    │  Step 13: Enforce doc        │
+    │  structure via dedicated     │
+    │  Claude API call             │
+    └──────┬──────────────────────┘
+           │
+    ┌──────▼──────────────────────┐
+    │  Step 14: Append Ballerina   │
+    │  Central examples link       │
+    │  (if connector has examples) │
+    └──────┬──────────────────────┘
+           │
+    ┌──────▼──────────────────────┐
+    │  Step 15: Crop UI chrome     │
+    │  from screenshots            │
+    └──────┬──────────────────────┘
+           │
+    ┌──────▼──────────────────────┐
+    │  Step 16: Write JSON run log │
+    │  (cost, tokens, timing)      │
+    └──────┬──────────────────────┘
+           │
+    ┌──────▼──────────────────────────────────┐
+    │  artifacts/screenshots/                  │
+    │  artifacts/workflow-docs/               │
+    │  artifacts/execution-prompt/            │
+    │  artifacts/run-log/                     │
+    └─────────────────────────────────────────┘
 ```
 
 ### Step descriptions
 
-1. **Step 0a — code-server install** — Runs `code-server --version`. If not found, installs via the official `curl` script.
-2. **Step 0b — code-server start** — Probes `http://localhost:<port>`. If not running, spawns code-server and polls for up to 15 s.
-3. **Step 1 — API validation** — Minimal Anthropic API ping before running the expensive steps.
-4. **Step 2 — Prompt building** — Constructs the system prompt (XML-tagged template) and user message with goal + code-server URL.
-5. **Step 3 — Prompt generation** — Calls Claude Sonnet 4.6 (up to 16 000 tokens) to produce the execution prompt.
-6. **Step 4 — Slug generation** — Second Claude call produces a 3–4 word filename-safe slug.
-7. **Step 5 — Format** — Prepends a Markdown metadata header.
-8. **Step 6 — Save** — Writes to `artifacts/execution-prompt/<slug>_execution_prompt_<timestamp>.md` and returns the path.
-9. **Step 7 — Agent server check** — Probes `/health`. If not running, spawns `cd agent && uv run agent_server.py --port <agentPort>` and polls for up to 20 s.
-10. **Step 8 — Agentic execution** — POSTs the prompt path to `/run`, receives a `job_id`, then polls `/jobs/<id>` every second printing coloured `[SESSION]`, `[CLAUDE]`, `[TOOL]`, `[RESULT]`, `[USAGE]` log lines until done.
+**Phase 1 — Pre-flight validation**
+1. **Step 1 — API validation** — Minimal Anthropic API ping before running the expensive steps.
+2. **Step 2 — Claude Code CLI check** — Verifies `claude` is installed and on `PATH` (required for agent execution).
+
+**Phase 2 — Infrastructure**
+3. **Step 3 — code-server install** — Runs `code-server --version`. If not found, installs via the official `curl` script.
+4. **Step 4 — code-server start** — Probes `http://localhost:<port>`. If not running, spawns code-server and polls for up to 15 s.
+5. **Step 5 — Agent server check** — Probes `/health`. If not running, spawns `agent/.venv/bin/python agent_server.py` and polls for up to 20 s.
+
+**Phase 3 — Prompt generation**
+6. **Step 6 — Prompt building** — Constructs the system prompt (XML-tagged template) and user message with goal + code-server URL.
+7. **Step 7 — Prompt generation** — Calls Claude Sonnet 4.6 (up to 16 000 tokens) to produce the execution prompt.
+8. **Step 8 — Slug generation** — Second Claude call produces a 3–4 word filename-safe slug.
+9. **Step 9 — Format** — Prepends a Markdown metadata header.
+10. **Step 10 — Save** — Writes to `artifacts/execution-prompt/<slug>_execution_prompt_<timestamp>.md` and returns the path.
+
+**Phase 4 — Agent execution & post-processing**
+11. **Step 11 — Agentic execution** — POSTs the prompt path to `/run`, receives a `job_id`, then polls `/jobs/<id>` every second printing coloured `[SESSION]`, `[CLAUDE]`, `[TOOL]`, `[RESULT]`, `[USAGE]` log lines until done.
+12. **Step 12 — Workspace cleanup** — Runs `cleanup_workspace.py` to close all open editor tabs in code-server.
+13. **Step 13 — Doc enforcement** — Dedicated Claude API call rewrites the generated workflow doc with doc-structure rules fresh in context (no browser-automation noise).
+14. **Step 14 — Examples link** — Runs `append_examples_link.py`: checks Ballerina Central for an examples section and appends a `## More Examples` link if found.
+15. **Step 15 — Screenshot crop** — Runs `crop_screenshots.py` to trim UI chrome from all captured screenshots.
+16. **Step 16 — Run log** — Writes a JSON run log to `artifacts/run-log/` with timing, token counts, and cost breakdown for all LLM calls.
 
 ---
 
@@ -281,7 +330,7 @@ cp Config.toml.example Config.toml
 
 ```toml
 # Anthropic API Key (required)
-anthropicApiKey = "sk-ant-..."
+llmApiKey = "sk-ant-..."
 
 # code-server port
 codeServerPort = 8080
@@ -311,30 +360,51 @@ userGoal = "Create an HTTP GET endpoint that returns Hello World using WSO2 Inte
 | Method | Path | Description |
 |--------|------|-------------|
 | `POST` | `/run` | Submit a job: `{ "prompt_path": "..." }` → `{ "job_id": "..." }` |
-| `GET` | `/jobs/<id>` | Poll job: `{ "status": "running\|done", "logs": [...] }` |
+| `GET` | `/jobs/<id>` | Poll job: `{ "status": "running\|done", "logs": [...], "cost": {...} }` |
 | `GET` | `/health` | Health check: `{ "status": "ok" }` |
 | `POST` | `/shutdown` | Gracefully stop the server |
+
+The `cost` field in `/jobs/<id>` contains `totalCostUsd`, `inputTokens`, `outputTokens`, `cacheReadTokens`, `cacheWriteTokens`, and `numTurns` once the job completes.
 
 ### Python setup
 
 ```bash
-# Create venv inside agent/ and install deps
+# Create venv inside agent/, install deps, and install Playwright Chromium
 make setup-python
 
 # Or manually:
 cd agent
 uv venv                          # creates agent/.venv
 uv pip install -r requirements.txt
+.venv/bin/playwright install chromium
 ```
 
 ### Start / stop manually
 
 ```bash
-make start-agent    # foreground: cd agent && uv run agent_server.py
+make start-agent    # foreground: cd agent && .venv/bin/python agent_server.py
 make stop-agent     # curl -X POST http://localhost:8765/shutdown
 
 # Custom port:
-cd agent && uv run agent_server.py --port 9000
+cd agent && .venv/bin/python agent_server.py --port 9000
+```
+
+---
+
+## Post-processing Scripts (`agent/`)
+
+| Script | When it runs | What it does |
+|--------|-------------|--------------|
+| `cleanup_workspace.py` | Step 12 | Closes all open editor tabs in code-server via Playwright |
+| `append_examples_link.py` | Step 14 | Checks Ballerina Central registry; appends `## More Examples` link if connector has examples |
+| `crop_screenshots.py` | Step 15 | Crops UI chrome (browser frame, sidebars) from all screenshots |
+
+Run screenshot cropping manually:
+
+```bash
+make crop-screenshots         # crop in-place
+make crop-screenshots-dry     # preview only (no changes)
+make crop-screenshots-backup  # crop and keep originals as .bak files
 ```
 
 ---
@@ -347,7 +417,7 @@ The automation target is a **code-server** instance (VS Code in the browser) wit
 code-server --auth none --bind-addr 0.0.0.0:8080
 ```
 
-Or let the pipeline handle it automatically (Step 0b).
+Or let the pipeline handle it automatically (Step 4).
 
 ---
 
@@ -359,10 +429,41 @@ The pipeline can run fully unattended via the included workflow at [`.github/wor
 
 Add these in your repo at **Settings → Secrets and variables → Actions → New repository secret**.
 
-| Secret | Required | Description | How to get it |
-|--------|----------|-------------|---------------|
-| `LLM_API_KEY` | ✅ Yes | Anthropic API key used by both the Ballerina pipeline (prompt generation) and Claude Code CLI (agent execution) | [console.anthropic.com](https://console.anthropic.com/) → API Keys → Create Key |
-| `DOCS_REPO_TOKEN` | ✅ Yes | GitHub Personal Access Token (PAT) with `repo` scope — used to push the generated docs and open a PR in `Generated-Connector-Documentation` | GitHub → **Settings → Developer settings → Personal access tokens → Tokens (classic)** → Generate new token → check **repo** scope |
+| Secret | Required | Description |
+|--------|----------|-------------|
+| `LLM_API_KEY` | ✅ Yes | Anthropic API key — used by the Ballerina pipeline (prompt generation + doc enforcement) and by the Claude Code CLI subprocess (agent execution) |
+| `DOCS_REPO_TOKEN` | ✅ Yes | GitHub Personal Access Token (PAT) — used to clone, push a branch, and open a PR in `vishwajayawickrama/Generated-Connector-Documentation` |
+
+#### `LLM_API_KEY`
+
+1. Go to [console.anthropic.com](https://console.anthropic.com/) → **API Keys** → **Create Key**
+2. Copy the key (shown only once)
+3. Add it as a secret named `LLM_API_KEY`
+
+#### `DOCS_REPO_TOKEN`
+
+The workflow does three things with this token against `vishwajayawickrama/Generated-Connector-Documentation`:
+- **Clone** the repo via HTTPS (`x-access-token:<token>@github.com/...`)
+- **Push** a new branch with the generated docs
+- **Create a PR** via the `gh` CLI (`GH_TOKEN`)
+
+**Required PAT scopes (classic token):**
+
+| Scope | Why it is needed |
+|-------|-----------------|
+| `repo` | Full access to clone, push branches, and create PRs in the target repository |
+
+**How to create the token:**
+
+1. GitHub → **Settings** (top-right avatar) → **Developer settings** → **Personal access tokens** → **Tokens (classic)**
+2. Click **Generate new token (classic)**
+3. Set a descriptive note, e.g. `connector-docs-automation`
+4. Set expiration as appropriate for your use case
+5. Check the **`repo`** scope (this covers all sub-scopes: `repo:status`, `repo_deployment`, `public_repo`, `repo:invite`, `security_events`)
+6. Click **Generate token** — copy it immediately (shown only once)
+7. Add it as a secret named `DOCS_REPO_TOKEN` in **this** repository
+
+> **Note:** The token must have access to `vishwajayawickrama/Generated-Connector-Documentation`. If that repo is owned by a different user or org, ensure the token belongs to an account that has `write` access to it.
 
 ### Required GitHub Environment
 
@@ -392,7 +493,8 @@ On a successful run:
 2. **GitHub Actions artifact** (retained 30 days) named `[connector-name]-connector-example-documentation-[run_id]`:
    - `artifacts/execution-prompt/` — the generated XML-tagged automation prompt
    - `artifacts/workflow-docs/` — the step-by-step connector guide (Markdown)
-   - `artifacts/screenshots/` — captured workflow screenshots
+   - `artifacts/screenshots/` — captured workflow screenshots (cropped)
+   - `artifacts/run-log/` — JSON run log with cost and timing stats
 
 ---
 
@@ -427,13 +529,13 @@ Edit the `allowed_tools` list in [agent/agent_server.py](agent/agent_server.py).
 | Action | Makefile | Direct command |
 |--------|----------|----------------|
 | Setup all deps | `make setup` | — |
-| Setup Python venv | `make setup-python` | `cd agent && uv venv && uv pip install -r requirements.txt` |
+| Setup Python venv | `make setup-python` | `cd agent && uv venv && uv pip install -r requirements.txt && .venv/bin/playwright install chromium` |
 | Build Ballerina | `make setup-bal` | `bal build` |
 | Run pipeline | `make run` | `bal run` |
-| Start agent server | `make start-agent` | `cd agent && uv run agent_server.py` |
+| Start agent server | `make start-agent` | `cd agent && .venv/bin/python agent_server.py` |
 | Stop agent server | `make stop-agent` | `curl -X POST http://localhost:8765/shutdown` |
-| Convert docs to PDF | `make convert-pdf` | `./scripts/convert-to-pdf.sh` |
-| Clean everything | `make clean` | `./scripts/cleanup.sh --force` |
+| Crop screenshots | `make crop-screenshots` | `agent/.venv/bin/python agent/crop_screenshots.py` |
+| Clean everything | `make clean` | `rm -rf artifacts/ target/ Dependencies.toml agent/.venv` |
 | Clean artifacts only | `make clean-artifacts` | `rm -rf artifacts/` |
 
 ---
@@ -443,8 +545,14 @@ Edit the `allowed_tools` list in [agent/agent_server.py](agent/agent_server.py).
 ### "Anthropic API key validation failed"
 ```bash
 cp Config.toml.example Config.toml
-# Set anthropicApiKey in Config.toml
+# Set llmApiKey in Config.toml
 export ANTHROPIC_API_KEY="sk-ant-..."
+```
+
+### "Claude Code CLI not installed"
+```bash
+# Install from https://claude.ai/code, then verify:
+claude --version
 ```
 
 ### "Agent server did not become ready"
@@ -462,7 +570,7 @@ source ~/.bashrc   # or ~/.zshrc
 ### Python import error: claude_agent_sdk not found
 ```bash
 make setup-python
-cd agent && uv run python -c "import claude_agent_sdk; print('OK')"
+cd agent && .venv/bin/python -c "import claude_agent_sdk; print('OK')"
 ```
 
 ### "code-server installer script failed"
@@ -481,6 +589,13 @@ bal clean && make setup-bal
 npm install -g @playwright/mcp@latest
 ```
 
+### Screenshots not cropped
+```bash
+make crop-screenshots
+# or preview first:
+make crop-screenshots-dry
+```
+
 ---
 
 ## Requirements
@@ -488,9 +603,10 @@ npm install -g @playwright/mcp@latest
 | Component | Version | Purpose |
 |-----------|---------|---------|
 | Ballerina | 2201.12.0+ | Pipeline orchestration |
-| Python | 3.11+ | Claude Agent SDK server (`agent/`) |
+| Python | 3.11+ | Claude Agent SDK server + post-processing scripts (`agent/`) |
 | uv | latest | Python venv & dependency management |
-| Anthropic API | Claude Sonnet 4.6 | Execution prompt generation |
+| Anthropic API | Claude Sonnet 4.6 | Execution prompt generation & doc enforcement |
+| Claude Code CLI | latest | Required by Agent SDK to spawn subagent |
 | Claude Agent SDK | latest | Agentic browser automation execution |
 | Playwright MCP | latest | Browser control via MCP |
 | Node.js | LTS+ | npm / npx for Playwright |
@@ -503,6 +619,7 @@ npm install -g @playwright/mcp@latest
 - [Ballerina](https://ballerina.io/)
 - [Anthropic API](https://docs.anthropic.com/)
 - [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk)
+- [Claude Code CLI](https://claude.ai/code)
 - [Playwright](https://playwright.dev/)
 - [Playwright MCP](https://github.com/anthropics/playwright-mcp)
 - [Model Context Protocol](https://spec.modelcontextprotocol.io/)
@@ -510,6 +627,7 @@ npm install -g @playwright/mcp@latest
 - [aiohttp](https://docs.aiohttp.org/)
 - [code-server](https://github.com/coder/code-server)
 - [WSO2 Integrator](https://wso2.com/integrator/)
+- [Ballerina Central](https://central.ballerina.io/)
 
 ---
 
@@ -537,7 +655,10 @@ When the Agent SDK spawns a subagent via the `Task` tool, that subagent is a **C
 | `.claude/settings.json` | Sets permissions & model for Claude Code subagent |
 | `agent_server.py` (mcp_servers) | Configures MCP for top-level agent (if it needs tools directly) |
 
+### Why is `CLAUDECODE` unset when starting the agent server?
+
+`make start-agent` runs `unset CLAUDECODE` before launching `agent_server.py`. This prevents a conflict when the server is started from within an active Claude Code session — the Agent SDK needs to spawn its own Claude Code subprocess, which fails if `CLAUDECODE` is already set in the environment.
 
 ---
 
-**Last Updated:** March 2, 2026
+**Last Updated:** March 19, 2026

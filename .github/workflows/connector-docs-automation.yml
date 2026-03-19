@@ -78,16 +78,10 @@ jobs:
         run: curl -fsSL https://code-server.dev/install.sh | sh
 
       # ── 8. WSO2 Integrator extension ─────────────────────────────────────────
-      # code-server defaults to open-vsx.org; WSO2 extensions live on the VS Code
-      # marketplace, so we set the gallery env vars to point there instead.
-      # Extensions land in ~/.local/share/code-server/extensions/ and are loaded
-      # automatically when code-server starts during the pipeline.
-      - name: Install WSO2 Integrator extension
-        env:
-          VSCODE_GALLERY_SERVICE_URL: "https://marketplace.visualstudio.com/_apis/public/gallery"
-          VSCODE_GALLERY_CACHE_URL: "https://vscodeexgallery.azureedge.net"
-          VSCODE_GALLERY_ITEM_URL: "https://marketplace.visualstudio.com/items"
-        run: code-server --install-extension wso2.wso2-integrator
+      # The extension is pre-release and cannot be installed from the marketplace,
+      # so we install it from the bundled .vsix file in the extensions/ directory.
+      - name: Install WSO2 Integrator extension from local .vsix
+        run: code-server --install-extension extensions/wso2.wso2-integrator-0.1.0.vsix
 
       # ── 9. Config.toml ───────────────────────────────────────────────────────
       # Use Python to write the file so special characters in the API key or goal
