@@ -351,6 +351,51 @@ Or let the pipeline handle it automatically (Step 0b).
 
 ---
 
+## Running on GitHub Actions
+
+The pipeline can run fully unattended via the included workflow at [`.github/workflows/connector-docs-automation.yml`](.github/workflows/connector-docs-automation.yml). Trigger it manually from the **Actions** tab with a goal string; it will generate the documentation, open a PR in the docs repo, and upload all artifacts.
+
+### Required Secrets
+
+Add these in your repo at **Settings → Secrets and variables → Actions → New repository secret**.
+
+| Secret | Required | Description | How to get it |
+|--------|----------|-------------|---------------|
+| `LLM_API_KEY` | ✅ Yes | Anthropic API key used by both the Ballerina pipeline (prompt generation) and Claude Code CLI (agent execution) | [console.anthropic.com](https://console.anthropic.com/) → API Keys → Create Key |
+| `DOCS_REPO_TOKEN` | ✅ Yes | GitHub Personal Access Token (PAT) with `repo` scope — used to push the generated docs and open a PR in `Generated-Connector-Documentation` | GitHub → **Settings → Developer settings → Personal access tokens → Tokens (classic)** → Generate new token → check **repo** scope |
+
+### Required GitHub Environment
+
+The workflow uses an environment named `docs-automation` (used for environment-level protection rules if desired).
+
+Create it at: **Settings → Environments → New environment → name it `docs-automation`** → Save.
+
+> If you don't want environment protection rules, you can also remove the `environment: docs-automation` line from the workflow file.
+
+### Workflow Inputs
+
+Trigger via **Actions → Connector Documentation Automation → Run workflow**:
+
+| Input | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `userGoal` | ✅ Yes | — | The WSO2 integration to document, e.g. `"Create a Redis key-value connection using WSO2 Integrator connectors"` |
+| `codeServerPort` | No | `8080` | Port for the code-server instance |
+| `agentServerPort` | No | `8765` | Port for the Python agent server |
+
+### What the Workflow Produces
+
+On a successful run:
+
+1. **A branch and PR** in `vishwajayawickrama/Generated-Connector-Documentation`:
+   - Branch: `[connector-name]-example-document`
+   - Directory: `[connector-name]-connector-example-documentation/workflow-docs/` + `/screenshots/`
+2. **GitHub Actions artifact** (retained 30 days) named `[connector-name]-connector-example-documentation-[run_id]`:
+   - `artifacts/execution-prompt/` — the generated XML-tagged automation prompt
+   - `artifacts/workflow-docs/` — the step-by-step connector guide (Markdown)
+   - `artifacts/screenshots/` — captured workflow screenshots
+
+---
+
 ## Customization
 
 ### Change the goal

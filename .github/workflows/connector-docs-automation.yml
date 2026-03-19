@@ -61,7 +61,7 @@ jobs:
       # ── 5. Claude Code CLI ───────────────────────────────────────────────────
       # The pipeline checks 'claude --version' (Step 2 pre-flight).
       # The claude-agent-sdk spawns a 'claude' subprocess for agentic execution.
-      # The CLI will authenticate via Claude Pro OAuth credentials (see Step 9).
+      # The CLI authenticates via the ANTHROPIC_API_KEY environment variable set on the pipeline step.
       - name: Install Claude Code CLI
         run: npm install -g @anthropic-ai/claude-code
 
@@ -89,22 +89,7 @@ jobs:
           VSCODE_GALLERY_ITEM_URL: "https://marketplace.visualstudio.com/items"
         run: code-server --install-extension wso2.wso2-integrator
 
-      # ── 9. Claude Pro credentials ────────────────────────────────────────────
-      # Writes ~/.claude/.credentials.json from two GitHub secrets:
-      #   CLAUDE_ACCESS_TOKEN  — the accessToken value from your local credentials
-      #   CLAUDE_REFRESH_TOKEN — the refreshToken value from your local credentials
-      # The other fields (expiresAt, scopes, subscriptionType, rateLimitTier) are
-      # static and taken directly from the known credentials structure.
-      - name: Restore Claude Pro credentials
-        env:
-          CLAUDE_ACCESS_TOKEN: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
-          CLAUDE_REFRESH_TOKEN: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
-        run: |
-          mkdir -p ~/.claude
-          printf '{"claudeAiOauth":{"accessToken":"%s","refreshToken":"%s","expiresAt":1772625924824,"scopes":["user:inference","user:mcp_servers","user:profile","user:sessions:claude_code"],"subscriptionType":"pro","rateLimitTier":"default_claude_ai"}}' \
-            "$CLAUDE_ACCESS_TOKEN" "$CLAUDE_REFRESH_TOKEN" > ~/.claude/.credentials.json
-
-      # ── 10. Config.toml ──────────────────────────────────────────────────────
+      # ── 9. Config.toml ───────────────────────────────────────────────────────
       # Use Python to write the file so special characters in the API key or goal
       # are properly escaped for TOML basic string syntax.
       - name: Create Config.toml
@@ -139,23 +124,104 @@ jobs:
           print("Config.toml written successfully.")
           PYEOF
 
-      # ── 11. Run the full pipeline ────────────────────────────────────────────
-      # No API key env var is set here intentionally:
-      # - Ballerina (ai_client.bal) reads LLM_API_KEY from Config.toml (Step 10).
-      # - The claude-agent-sdk subprocess has no API key in its environment, so the
-      #   'claude' CLI authenticates via the OAuth credentials restored in Step 9.
+      # ── 10. Run the full pipeline ────────────────────────────────────────────
+      # Authentication:
+      # - Ballerina (ai_client.bal) reads llmApiKey from Config.toml (written in step 9).
+      # - ANTHROPIC_API_KEY is set here so the 'claude' subprocess spawned by the
+      #   agent SDK authenticates via API key (reuses the same LLM_API_KEY secret).
       - name: Run pipeline
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.LLM_API_KEY }}
         run: bal run
         timeout-minutes: 80
 
-      # ── 12. Upload artifacts ─────────────────────────────────────────────────
+      # ── 12. Extract connector name from the generated workflow doc ───────────
+      - name: Extract connector name
+        id: connector
+        run: |
+          DOC_FILE=$(find artifacts/workflow-docs -name "*.md" | head -1)
+          if [ -z "$DOC_FILE" ]; then
+            echo "[WARN] No workflow doc found — docs-repo push will be skipped."
+            echo "connector_name=unknown" >> "$GITHUB_OUTPUT"
+            echo "dir_name=unknown-connector-example-documentation" >> "$GITHUB_OUTPUT"
+            echo "branch_name=unknown-example-document" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          CONNECTOR_NAME=$(grep "^# " "$DOC_FILE" | head -1 \
+            | sed 's/^# //' | sed 's/ Connector Example.*//' \
+            | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
+          echo "connector_name=$CONNECTOR_NAME" >> "$GITHUB_OUTPUT"
+          echo "dir_name=${CONNECTOR_NAME}-connector-example-documentation" >> "$GITHUB_OUTPUT"
+          echo "branch_name=${CONNECTOR_NAME}-example-document" >> "$GITHUB_OUTPUT"
+          echo "[INFO] Connector name: $CONNECTOR_NAME"
+
+      # ── 13. Organise artifacts into the named connector directory ─────────────
+      - name: Organise artifacts into connector directory
+        run: |
+          DIR_NAME="${{ steps.connector.outputs.dir_name }}"
+          mkdir -p "$DIR_NAME/workflow-docs"
+          mkdir -p "$DIR_NAME/screenshots"
+          cp artifacts/workflow-docs/*.md "$DIR_NAME/workflow-docs/" 2>/dev/null || true
+          cp artifacts/screenshots/*.png  "$DIR_NAME/screenshots/"  2>/dev/null || true
+
+      # ── 14. Push to Generated-Connector-Documentation and open a PR ──────────
+      # Requires the DOCS_REPO_TOKEN secret: a PAT with `repo` scope on
+      # vishwajayawickrama/Generated-Connector-Documentation.
+      - name: Push to docs repo and create PR
+        env:
+          DOCS_REPO_TOKEN: ${{ secrets.DOCS_REPO_TOKEN }}
+          GH_TOKEN: ${{ secrets.DOCS_REPO_TOKEN }}
+        run: |
+          CONNECTOR_NAME="${{ steps.connector.outputs.connector_name }}"
+          DIR_NAME="${{ steps.connector.outputs.dir_name }}"
+          BRANCH_NAME="${{ steps.connector.outputs.branch_name }}"
+
+          if [ "$CONNECTOR_NAME" = "unknown" ]; then
+            echo "[WARN] No connector name extracted — skipping docs-repo push."
+            exit 0
+          fi
+
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+          git clone \
+            "https://x-access-token:${DOCS_REPO_TOKEN}@github.com/vishwajayawickrama/Generated-Connector-Documentation.git" \
+            target-repo
+
+          cd target-repo
+          git checkout -b "$BRANCH_NAME"
+          cp -r "../$DIR_NAME" .
+          git add .
+          git commit -m "docs: add ${CONNECTOR_NAME} connector example documentation"
+          git push origin "$BRANCH_NAME"
+
+          printf '%s\n' \
+            "## ${CONNECTOR_NAME^} Connector Example Documentation" \
+            "" \
+            "Auto-generated workflow documentation for the **${CONNECTOR_NAME}** WSO2 Integrator connector." \
+            "" \
+            "### Contents" \
+            "- \`${DIR_NAME}/workflow-docs/\` — Step-by-step connector guide with embedded screenshots" \
+            "- \`${DIR_NAME}/screenshots/\` — Captured workflow screenshots (5-7 milestones)" \
+            "" \
+            "Generated by Connector Documentation Automation: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            > /tmp/pr-body.md
+
+          gh pr create \
+            --title "docs: add ${CONNECTOR_NAME} connector example documentation" \
+            --body-file /tmp/pr-body.md \
+            --base main \
+            --head "$BRANCH_NAME" \
+            --repo vishwajayawickrama/Generated-Connector-Documentation
+
+      # ── 15. Upload artifacts ──────────────────────────────────────────────────
       # Always upload — even on failure — so partial outputs (e.g. execution prompt
       # generated but agent crashed) are available for debugging.
       - name: Upload artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: automation-artifacts-${{ github.run_id }}
+          name: ${{ steps.connector.outputs.dir_name }}-${{ github.run_id }}
           path: |
             artifacts/execution-prompt/
             artifacts/screenshots/
