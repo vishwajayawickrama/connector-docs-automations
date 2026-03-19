@@ -19,7 +19,7 @@ configurable int agentServerPort = 8765;
 # Phase 1  (Steps 1–2):  Pre-flight validation — API key and Claude Code CLI.
 # Phase 2  (Steps 3–5):  Infrastructure     — code-server and Python agent server.
 # Phase 3  (Steps 6–10): Prompt generation  — build, call Claude, format, save.
-# Phase 4  (Steps 11–15): Agent execution  — run agent, cleanup workspace, enforce doc, crop screenshots, write run log.
+# Phase 4  (Steps 11–16): Agent execution  — run agent, cleanup workspace, enforce doc, append examples link, crop screenshots, write run log.
 #
 # + return - an error if any step fails
 public function main() returns error? {
@@ -208,8 +208,30 @@ public function main() returns error? {
     }
     utils:log("");
 
-    // Step 14: Crop UI chrome from screenshots produced by the agent
-    utils:log("[STEP 14] Cropping screenshots...");
+    // Step 14: Append Ballerina Central examples link to the workflow doc (if examples exist)
+    utils:log("[STEP 14] Checking Ballerina Central for connector examples link...");
+    if enforcedDocPath != "" {
+        os:Process|error examplesProc = os:exec({
+            value: "agent/.venv/bin/python",
+            arguments: ["agent/append_examples_link.py", enforcedDocPath]
+        });
+        if examplesProc is error {
+            utils:log("\t[WARN] Could not start append_examples_link.py: " + examplesProc.message());
+        } else {
+            int examplesExit = check examplesProc.waitForExit();
+            if examplesExit == 0 {
+                utils:log("\t[INFO] Examples link step complete.");
+            } else {
+                utils:log("\t[WARN] append_examples_link.py exited with code " + examplesExit.toString() + ".");
+            }
+        }
+    } else {
+        utils:log("\t[INFO] No enforced doc path available — skipping examples link.");
+    }
+    utils:log("");
+
+    // Step 15: Crop UI chrome from screenshots produced by the agent
+    utils:log("[STEP 15] Cropping screenshots...");
     os:Process|error cropProc = os:exec({
         value: "agent/.venv/bin/python",
         arguments: ["agent/crop_screenshots.py"]
@@ -248,8 +270,8 @@ public function main() returns error? {
     }
     decimal totalCombinedCostUsd = totalCostUsd + agentCostUsd;
 
-    // Step 15: Write run log to artifacts/run-log/
-    utils:log("[STEP 15] Writing run log...");
+    // Step 16: Write run log to artifacts/run-log/
+    utils:log("[STEP 16] Writing run log...");
     string runLogDir = "./artifacts/run-log";
     io:Error? keepErr = io:fileWriteString(runLogDir + "/.keep", "");
     if keepErr is io:Error {

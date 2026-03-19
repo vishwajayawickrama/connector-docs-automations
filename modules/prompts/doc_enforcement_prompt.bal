@@ -31,15 +31,16 @@ Replace [ConnectorName] with the actual connector name already present in the do
 3. Port numbers — remove all port numbers (e.g. :8080, :8765, :3000, etc.)
 4. File system paths — remove /home/, ~/, /workspace/, artifacts/, or any OS path
 5. "Ballerina" used as a platform name — replace every such occurrence with "WSO2 Integrator"
+5a. "WSO2 Integrator BI" — replace every occurrence with "WSO2 Integrator" (remove the "BI" suffix; it must NEVER appear in the document)
 6. .bal file references — remove references to .bal files or Ballerina-syntax explanations
 7. Code fence blocks — remove ALL triple-backtick blocks; no code blocks of any kind are allowed
 8. Stage 1 setup actions — remove steps describing code-server navigation, terminal commands, or workspace creation
 9. Internal automation details — remove references to browser_type, browser_fill, browser_navigate, "helper dropdown", MCP tool calls, or any automation-internal language
-10. Extra sections — remove any H2 section not in the fixed template (see SECTION STRUCTURE below)
+10. Extra sections — remove any H2 section not in the fixed template (see SECTION STRUCTURE below). **Exception: preserve "## More Examples" if present — it is appended by the pipeline after enforcement.**
 11. Numbered or non-template H2 headers — replace or remove; only the fixed template H2s are allowed
 12. Frontmatter / metadata blocks — remove YAML frontmatter (--- blocks), JSON metadata, or similar
 13. Timestamp footers — remove "Generated on", "Last updated", date stamps, or similar footers
-14. Summary / Conclusion sections — remove any H2 or H3 named "Summary", "Conclusion", "Next Steps", "Recap", or similar closing prose sections
+14. Summary / Conclusion sections — remove any H2 or H3 named "Summary", "Conclusion", "Next Steps", "Recap", or similar closing prose sections. **Exception: do NOT remove a section named "## More Examples"** — this is a valid optional section added by the pipeline.
 15. Numbered steps in the "Setting Up" section — the ## Setting Up section must contain ONLY the redirect note linking to the shared project-creation guide; remove any ### Step N headers, screenshot image references, or inline parameters from this section
 
 ---
@@ -54,11 +55,13 @@ The document MUST contain exactly the following H2 sections, with these exact na
 4. ## Adding the [ConnectorName] Connector
 5. ## Configuring the [ConnectorName] Connection
 6. ## Configuring the [ConnectorName] [OperationName] Operation
+7. ## More Examples                   ← OPTIONAL — present only if appended by the pipeline (Ballerina Central examples verified)
 
 Rules:
 - Replace [ConnectorName] and [OperationName] with the actual names from the document
-- Do NOT rename, reorder, add, or remove sections (except omitting Prerequisites when appropriate)
+- Do NOT rename, reorder, add, or remove sections (except omitting Prerequisites and More Examples when not applicable)
 - Do NOT add section numbers to H2 headers (e.g. "## 1. What You'll Build" is wrong)
+- Do NOT add a "## More Examples" section yourself — it is added deterministically by the pipeline only when Ballerina Central confirms examples exist for the connector
 
 ### ## Setting Up the [ConnectorName] Integration
 
@@ -72,6 +75,12 @@ Numbered steps begin in the "## Adding the [ConnectorName] Connector" section, s
 Must contain:
 - 2–3 sentences describing what is built
 - A "**Operations used:**" bullet list with one-line descriptions of each operation
+
+**Operations used — accuracy rule (MANDATORY):**
+Cross-check every operation listed under "**Operations used:**" against the actual steps in the document.
+- KEEP only operations that are explicitly configured or called in a numbered step (i.e., the step names the operation and shows how it is used).
+- REMOVE any operation that is merely mentioned as context, listed as a future possibility, referenced in passing, or not configured in any step.
+- Do NOT add operations that are missing from the list — only remove ones that are not backed by an actual step.
 
 ### ## Prerequisites
 
