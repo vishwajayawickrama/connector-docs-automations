@@ -429,10 +429,41 @@ The pipeline can run fully unattended via the included workflow at [`.github/wor
 
 Add these in your repo at **Settings → Secrets and variables → Actions → New repository secret**.
 
-| Secret | Required | Description | How to get it |
-|--------|----------|-------------|---------------|
-| `LLM_API_KEY` | ✅ Yes | Anthropic API key used by both the Ballerina pipeline (prompt generation) and Claude Code CLI (agent execution) | [console.anthropic.com](https://console.anthropic.com/) → API Keys → Create Key |
-| `DOCS_REPO_TOKEN` | ✅ Yes | GitHub Personal Access Token (PAT) with `repo` scope — used to push the generated docs and open a PR in `Generated-Connector-Documentation` | GitHub → **Settings → Developer settings → Personal access tokens → Tokens (classic)** → Generate new token → check **repo** scope |
+| Secret | Required | Description |
+|--------|----------|-------------|
+| `LLM_API_KEY` | ✅ Yes | Anthropic API key — used by the Ballerina pipeline (prompt generation + doc enforcement) and by the Claude Code CLI subprocess (agent execution) |
+| `DOCS_REPO_TOKEN` | ✅ Yes | GitHub Personal Access Token (PAT) — used to clone, push a branch, and open a PR in `vishwajayawickrama/Generated-Connector-Documentation` |
+
+#### `LLM_API_KEY`
+
+1. Go to [console.anthropic.com](https://console.anthropic.com/) → **API Keys** → **Create Key**
+2. Copy the key (shown only once)
+3. Add it as a secret named `LLM_API_KEY`
+
+#### `DOCS_REPO_TOKEN`
+
+The workflow does three things with this token against `vishwajayawickrama/Generated-Connector-Documentation`:
+- **Clone** the repo via HTTPS (`x-access-token:<token>@github.com/...`)
+- **Push** a new branch with the generated docs
+- **Create a PR** via the `gh` CLI (`GH_TOKEN`)
+
+**Required PAT scopes (classic token):**
+
+| Scope | Why it is needed |
+|-------|-----------------|
+| `repo` | Full access to clone, push branches, and create PRs in the target repository |
+
+**How to create the token:**
+
+1. GitHub → **Settings** (top-right avatar) → **Developer settings** → **Personal access tokens** → **Tokens (classic)**
+2. Click **Generate new token (classic)**
+3. Set a descriptive note, e.g. `connector-docs-automation`
+4. Set expiration as appropriate for your use case
+5. Check the **`repo`** scope (this covers all sub-scopes: `repo:status`, `repo_deployment`, `public_repo`, `repo:invite`, `security_events`)
+6. Click **Generate token** — copy it immediately (shown only once)
+7. Add it as a secret named `DOCS_REPO_TOKEN` in **this** repository
+
+> **Note:** The token must have access to `vishwajayawickrama/Generated-Connector-Documentation`. If that repo is owned by a different user or org, ensure the token belongs to an account that has `write` access to it.
 
 ### Required GitHub Environment
 
