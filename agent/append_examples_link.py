@@ -2,18 +2,18 @@
 """
 append_examples_link.py
 
-Post-processing step: checks whether the connector has an examples section on
-Ballerina Central and appends a '## More Examples' section to the workflow doc
-if the check succeeds.
+Post-processing step: fetches the Examples section from the connector's Ballerina
+Central readme (via registry API) and appends it to the workflow doc under the
+heading '## More Code Examples'.
 
 Usage: python append_examples_link.py <doc_path>
 
-Verification strategy:
+Strategy:
   1. Extract connector name from the H1 title of the doc.
-  2. Query the Ballerina Central registry API to confirm the package exists.
-  3. Fetch the connector's package page and check whether the HTML contains an
-     'examples' anchor (present when the connector has an Examples tab).
-  4. Append the section only if both checks pass.
+  2. Query the Ballerina Central registry API (/latest) to get package metadata.
+  3. Extract the 'readme' field (markdown) from the response.
+  4. Parse out the '## Examples' section from the readme.
+  5. Append the section content under '## More Code Examples' (not the original heading).
 """
 
 import json
@@ -23,9 +23,7 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-REGISTRY_API = "https://api.central.ballerina.io/2.0/registry/packages/ballerinax/{name}"
-CENTRAL_PAGE = "https://central.ballerina.io/ballerinax/{name}/latest"
-EXAMPLES_URL  = "https://central.ballerina.io/ballerinax/{name}/latest#examples"
+REGISTRY_API = "https://api.central.ballerina.io/2.0/registry/packages/ballerinax/{name}/latest"
 
 
 def extract_connector_name(doc_content: str) -> str | None:
@@ -34,50 +32,57 @@ def extract_connector_name(doc_content: str) -> str | None:
     return match.group(1).lower() if match else None
 
 
-def package_exists_on_central(connector_name: str) -> bool:
-    """Return True if the ballerinax/[connector] package is found in the registry."""
-    url = REGISTRY_API.format(name=connector_name)
+def fetch_json(url: str) -> dict | list | None:
+    """GET a URL and parse the JSON response. Returns None on any error."""
     try:
-        req = Request(url, headers={"Accept": "application/json"})
-        with urlopen(req, timeout=10) as resp:
-            return resp.status == 200
-    except (HTTPError, URLError):
-        return False
+        req = Request(url, headers={"User-Agent": "connector-docs-automation/1.0",
+                                    "Accept": "application/json"})
+        with urlopen(req, timeout=15) as resp:
+            if resp.status == 200:
+                return json.loads(resp.read().decode("utf-8"))
+    except (HTTPError, URLError, json.JSONDecodeError):
+        pass
+    return None
 
 
-def has_examples_section(connector_name: str) -> bool:
+def extract_examples_section(readme: str) -> str | None:
     """
-    Return True if the connector's Ballerina Central page contains an examples
-    section anchor. The page HTML is checked for 'id="examples"' or the
-    navigation tab label 'Examples', which are present when examples exist.
+    Parse the Examples section out of a Ballerina Central readme (markdown).
+
+    Finds the first heading that matches 'Examples' (any level), then collects
+    all content up to the next heading of the same or higher level. Returns the
+    section body (without the original heading), or None if not found.
     """
-    url = CENTRAL_PAGE.format(name=connector_name)
-    try:
-        req = Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urlopen(req, timeout=10) as resp:
-            if resp.status != 200:
-                return False
-            html = resp.read().decode("utf-8", errors="replace")
-            # Ballerina Central includes an 'Examples' tab anchor in the HTML
-            # when the connector ships example code.
-            return (
-                'id="examples"' in html
-                or '"examples"' in html
-                or ">Examples<" in html
-                or "examples" in html.lower()
-            )
-    except (HTTPError, URLError):
-        return False
+    lines = readme.splitlines()
+
+    # Find the Examples heading line
+    start_idx = None
+    heading_level = None
+    for i, line in enumerate(lines):
+        m = re.match(r"^(#{1,6})\s+Examples?\s*$", line.strip(), re.IGNORECASE)
+        if m:
+            start_idx = i
+            heading_level = len(m.group(1))
+            break
+
+    if start_idx is None:
+        return None
+
+    # Collect lines after the heading until the next same-or-higher-level heading
+    body_lines = []
+    for line in lines[start_idx + 1:]:
+        m = re.match(r"^(#{1,6})\s", line)
+        if m and len(m.group(1)) <= heading_level:
+            break
+        body_lines.append(line)
+
+    body = "\n".join(body_lines).strip()
+    return body if body else None
 
 
-def build_examples_section(connector_name: str) -> str:
-    display_name = connector_name.capitalize()
-    url = EXAMPLES_URL.format(name=connector_name)
-    return (
-        "\n## More Examples\n\n"
-        f"For additional usage patterns and real-world scenarios, browse the "
-        f"[{display_name} connector examples]({url}) on Ballerina Central.\n"
-    )
+def build_section(body: str) -> str:
+    """Wrap extracted examples body under '## More Code Examples'."""
+    return f"\n## More Code Examples\n\n{body}\n"
 
 
 def main() -> None:
@@ -92,9 +97,9 @@ def main() -> None:
 
     content = doc_path.read_text(encoding="utf-8")
 
-    # Idempotency: don't append if already present
-    if "central.ballerina.io" in content:
-        print("[INFO] append_examples_link: examples link already present — skipping.")
+    # Idempotency: skip if already appended
+    if "## More Code Examples" in content:
+        print("[INFO] append_examples_link: 'More Code Examples' section already present — skipping.")
         sys.exit(0)
 
     connector_name = extract_connector_name(content)
@@ -102,18 +107,25 @@ def main() -> None:
         print("[WARN] append_examples_link: could not extract connector name from doc title — skipping.")
         sys.exit(0)
 
-    print(f"[INFO] append_examples_link: checking Ballerina Central for '{connector_name}'...")
-
-    if not package_exists_on_central(connector_name):
-        print(f"[INFO] append_examples_link: package 'ballerinax/{connector_name}' not found on Central — skipping.")
+    print(f"[INFO] append_examples_link: fetching metadata for '{connector_name}' from Ballerina Central...")
+    metadata = fetch_json(REGISTRY_API.format(name=connector_name))
+    if not metadata or not isinstance(metadata, dict):
+        print(f"[INFO] append_examples_link: package 'ballerinax/{connector_name}' not found — skipping.")
         sys.exit(0)
 
-    if not has_examples_section(connector_name):
-        print(f"[INFO] append_examples_link: no examples section found for '{connector_name}' — skipping.")
+    readme = metadata.get("readme", "")
+    if not readme:
+        print("[INFO] append_examples_link: readme field is empty in package metadata — skipping.")
         sys.exit(0)
 
-    doc_path.write_text(content.rstrip() + "\n" + build_examples_section(connector_name), encoding="utf-8")
-    print(f"[INFO] append_examples_link: appended examples link for '{connector_name}'.")
+    examples_body = extract_examples_section(readme)
+    if not examples_body:
+        print(f"[INFO] append_examples_link: no Examples section found in readme for '{connector_name}' — skipping.")
+        sys.exit(0)
+
+    print(f"[INFO] append_examples_link: found Examples section — appending as '## More Code Examples'.")
+    doc_path.write_text(content.rstrip() + "\n" + build_section(examples_body), encoding="utf-8")
+    print("[INFO] append_examples_link: done.")
 
 
 if __name__ == "__main__":

@@ -142,7 +142,9 @@ You are also a Technical Documentation Specialist — after automation, write th
 1. Navigate to [CODE_SERVER_URL] (the code-server URL from the user message).
 2. Wait for the VS Code interface to fully load (networkidle).
 3. **If a "Git repository found on parent" popup appears**, dismiss it by clicking **Never**.
-4. **Close the GitHub Copilot Chat panel** if it is open (look for a Copilot chat sidebar or panel — click its X/close button, or use the View menu to hide it).
+4. **Close the GitHub Copilot Chat panel and secondary sidebar** if open:
+   - Close the **right-side secondary sidebar** (where Copilot Chat typically docks): press **Ctrl+Alt+B**, or go to **View → Appearance → Secondary Side Bar** to toggle it off.
+   - If a Copilot Chat panel remains visible anywhere, click its × close button or use the View menu to hide it.
 5. **Close the integrated terminal** if it is open (look for a terminal panel at the bottom of the editor — click its X/close button or press the close icon on the terminal tab).
 6. **Close ALL open editor tabs** — if any .bal files or source files were auto-opened by VS Code, close every tab in the editor area (click each × on each tab, or use View → Close All Editors). The editor area must be empty with no source files visible.
 7. After closing all panels, tabs, and dismissing popups, call ${bt}browser_snapshot${bt} to confirm a clean empty workspace with no editor tabs open.
