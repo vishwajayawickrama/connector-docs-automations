@@ -431,8 +431,8 @@ Add these in your repo at **Settings → Secrets and variables → Actions → N
 
 | Secret | Required | Description |
 |--------|----------|-------------|
-| `LLM_API_KEY` | ✅ Yes | Anthropic API key — used by the Ballerina pipeline (prompt generation + doc enforcement) and by the Claude Code CLI subprocess (agent execution) |
-| `DOCS_REPO_TOKEN` | ✅ Yes | GitHub Personal Access Token (PAT) — used to clone, push a branch, and open a PR in `vishwajayawickrama/Generated-Connector-Documentation.` |
+| `LLM_API_KEY` | ✅ Yes | Anthropic API key — used by the Ballerina pipeline (prompt generation + doc enforcement) and by the Claude Code CLI subprocess (agent execution + docs placement) |
+| `DOCS_INTEGRATOR_TOKEN` | ✅ Yes | GitHub PAT — used by `publish-connector-docs.yml` to push a feature branch to `vishwajayawickrama/docs-integrator` and open a PR against `thuva9872/docs-integrator:dev` |
 
 #### `LLM_API_KEY`
 
@@ -440,30 +440,30 @@ Add these in your repo at **Settings → Secrets and variables → Actions → N
 2. Copy the key (shown only once)
 3. Add it as a secret named `LLM_API_KEY`
 
-#### `DOCS_REPO_TOKEN`
+#### `DOCS_INTEGRATOR_TOKEN`
 
-The workflow does three things with this token against `vishwajayawickrama/Generated-Connector-Documentation.`:
-- **Clone** the repo via HTTPS (`x-access-token:<token>@github.com/...`)
-- **Push** a new branch with the generated docs
-- **Create a PR** via the `gh` CLI (`GH_TOKEN`)
+Used by the publish workflow (`publish-connector-docs.yml`) to:
+- **Clone** `vishwajayawickrama/docs-integrator` via HTTPS
+- **Push** a new feature branch (`docs/publish-{connector}-{run-id}`) to the fork
+- **Create a PR** from the fork's feature branch to `thuva9872/docs-integrator:dev`
 
 **Required PAT scopes (classic token):**
 
 | Scope | Why it is needed |
 |-------|-----------------|
-| `repo` | Full access to clone, push branches, and create PRs in the target repository |
+| `repo` | Full access to clone and push branches to `vishwajayawickrama/docs-integrator`, and to create PRs against `thuva9872/docs-integrator` |
 
 **How to create the token:**
 
 1. GitHub → **Settings** (top-right avatar) → **Developer settings** → **Personal access tokens** → **Tokens (classic)**
 2. Click **Generate new token (classic)**
-3. Set a descriptive note, e.g. `connector-docs-automation`
+3. Set a descriptive note, e.g. `docs-integrator-automation`
 4. Set expiration as appropriate for your use case
 5. Check the **`repo`** scope (this covers all sub-scopes: `repo:status`, `repo_deployment`, `public_repo`, `repo:invite`, `security_events`)
 6. Click **Generate token** — copy it immediately (shown only once)
-7. Add it as a secret named `DOCS_REPO_TOKEN` in **this** repository
+7. Add it as a secret named `DOCS_INTEGRATOR_TOKEN` in the `docs-automation` environment of **this** repository
 
-> **Note:** The token must have access to `vishwajayawickrama/Generated-Connector-Documentation.`. If that repo is owned by a different user or org, ensure the token belongs to an account that has `write` access to it.
+> **Note:** The token must belong to an account with `write` access to `vishwajayawickrama/docs-integrator`. Any GitHub account can open PRs against a public repo (`thuva9872/docs-integrator`) — no special upstream permissions are required.
 
 ### Required GitHub Environment
 
