@@ -321,6 +321,34 @@ covered and what API resources will be created, (3) the overall flow assembled o
 - **[operationName]** — [one-line description of what this operation does]
 [List ALL connector-specific functions/operations configured during the workflow]
 
+## Architecture
+
+[Generate a horizontal Mermaid flowchart (flowchart LR) that visualises the integration flow for this specific connector.
+Rules:
+- Use 3–5 nodes — choose the count appropriate for this connector's complexity.
+- Do NOT include WSO2 Integrator, code-server, or any tooling/environment nodes.
+- Focus only on WHAT is being built: the entry point, the connector operation(s), and the target resource(s).
+- Use real names from the actual workflow (e.g., "Kafka Connector\nSend Operation", "MySQL Database").
+- Add branching where it naturally fits (e.g., multiple operations or multiple target resources) — not mandatory for simple flows.
+
+Example — simple (3 nodes):
+${bt}${bt}${bt}mermaid
+flowchart LR
+    A[Automation Trigger] --> B[MySQL Connector\nQuery Operation]
+    B --> C[MySQL Database]
+${bt}${bt}${bt}
+
+Example — with branching (5 nodes):
+${bt}${bt}${bt}mermaid
+flowchart LR
+    A[HTTP Listener] --> B[Salesforce Connector]
+    B --> C[Create Account]
+    B --> D[Create Contact]
+    C & D --> E[Salesforce CRM]
+${bt}${bt}${bt}
+
+Replace the examples above with the diagram appropriate for this connector and workflow.]
+
 ## Prerequisites
 
 > **Omit this section entirely** if there are no connector-specific external dependencies.
@@ -331,7 +359,7 @@ covered and what API resources will be created, (3) the overall flow assembled o
 
 ## Setting Up the [ConnectorName] Integration
 
-> **New to WSO2 Integrator?** Follow the [Create a New Integration Project](../getting-started/create-integration.md) guide to set up your project first, then return here to add the connector.
+> **New to WSO2 Integrator?** Follow the [Create a New Integration](../getting-started/create-integration.md) guide to set up your project first, then return here to add the connector.
 
 [No numbered steps in this section. Project creation is a common prerequisite covered in the shared guide above. Numbered steps begin in the next section, starting from Step 1.]
 
