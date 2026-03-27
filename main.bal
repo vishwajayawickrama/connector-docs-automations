@@ -19,7 +19,8 @@ configurable int agentServerPort = 8765;
 # Phase 1  (Steps 1–2):  Pre-flight validation — API key and Claude Code CLI.
 # Phase 2  (Steps 3–5):  Infrastructure     — code-server and Python agent server.
 # Phase 3  (Steps 6–10): Prompt generation  — build, call Claude, format, save.
-# Phase 4  (Steps 11–16): Agent execution  — run agent, cleanup workspace, enforce doc, append examples link, crop screenshots, write run log.
+# Phase 4  (Steps 11–13): Agent execution   — run agent, cleanup workspace, enforce doc structure.
+# Phase 5  (Steps 14–17): Post-processing   — inject Devant button, append examples link, crop screenshots, write run log.
 #
 # + return - an error if any step fails
 public function main() returns error? {
@@ -100,7 +101,7 @@ public function main() returns error? {
     // Step 6: Build system and user prompts
     utils:log("[STEP 6] Building system and user prompts...");
     string projectRoot = os:getEnv("PWD");
-    string systemPrompt = prompts:buildSystemPrompt();
+    string systemPrompt = prompts:buildSystemPrompt(projectRoot);
     string userMessage = prompts:buildUserMessage(userGoal, codeServerUrl, projectRoot);
 
     // Step 7: Call Anthropic API to generate the execution prompt
@@ -136,32 +137,32 @@ public function main() returns error? {
     utils:log("\t[INFO] Saved to: " + promptPath);
     utils:log("");
 
-    // ── Phase 4: Agent execution ────────────────────────────────────────────
+    // ── Phase 4: Agent execution ─────────────────────────────────────────────
 
     // Step 11: Submit the execution prompt to the agent server and stream logs
     utils:log("[STEP 11] Running Claude agent...");
     agent_client:AgentCost? agentCost = check agent_client:runClaudeAgent(promptPath, agentUrl);
     utils:log("");
 
-    // ── Phase 4 (cont.): Post-processing ────────────────────────────────────
+    // ── Phase 5: Post-processing ──────────────────────────────────────────────
 
     // Step 12: Close all editor tabs in code-server (deterministic cleanup, no LLM needed)
-    utils:log("[STEP 12] Workspace cleanup — closing editor tabs in code-server...");
-    os:Process|error cleanupProc = os:exec({
-        value: "agent/.venv/bin/python",
-        arguments: ["agent/cleanup_workspace.py", "--url", codeServerUrl]
-    });
-    if cleanupProc is error {
-        utils:log("\t[WARN] Could not start cleanup_workspace.py: " + cleanupProc.message());
-    } else {
-        int cleanupExit = check cleanupProc.waitForExit();
-        if cleanupExit == 0 {
-            utils:log("\t[INFO] Workspace cleanup complete.");
-        } else {
-            utils:log("\t[WARN] cleanup_workspace.py exited with code " + cleanupExit.toString() + ".");
-        }
-    }
-    utils:log("");
+    // utils:log("[STEP 12] Workspace cleanup — closing editor tabs in code-server...");
+    // os:Process|error cleanupProc = os:exec({
+    //     value: "agent/.venv/bin/python",
+    //     arguments: ["agent/cleanup_workspace.py", "--url", codeServerUrl]
+    // });
+    // if cleanupProc is error {
+    //     utils:log("\t[WARN] Could not start cleanup_workspace.py: " + cleanupProc.message());
+    // } else {
+    //     int cleanupExit = check cleanupProc.waitForExit();
+    //     if cleanupExit == 0 {
+    //         utils:log("\t[INFO] Workspace cleanup complete.");
+    //     } else {
+    //         utils:log("\t[WARN] cleanup_workspace.py exited with code " + cleanupExit.toString() + ".");
+    //     }
+    // }
+    // utils:log("");
 
     // Step 13: Enforce documentation structure via a dedicated Claude API call.
     // The agent writes the doc with all browser-automation context in its window;
@@ -208,8 +209,31 @@ public function main() returns error? {
     }
     utils:log("");
 
-    // Step 14: Append Ballerina Central examples link to the workflow doc (if examples exist)
-    utils:log("[STEP 14] Checking Ballerina Central for connector examples link...");
+    // Step 14: Inject "Deploy to Devant" button into the workflow doc
+    utils:log("[STEP 14] Injecting Deploy to Devant button into workflow doc...");
+    if enforcedDocPath != "" {
+        os:Process|error devantProc = os:exec({
+            value: "agent/.venv/bin/python",
+            arguments: ["agent/inject_devant_button.py", enforcedDocPath]
+        });
+        if devantProc is error {
+            utils:log("\t[WARN] Could not start inject_devant_button.py: " + devantProc.message());
+            utils:log("\t[WARN] Run manually: agent/.venv/bin/python agent/inject_devant_button.py " + enforcedDocPath);
+        } else {
+            int devantExit = check devantProc.waitForExit();
+            if devantExit == 0 {
+                utils:log("\t[INFO] Deploy to Devant button injected successfully.");
+            } else {
+                utils:log("\t[WARN] inject_devant_button.py exited with code " + devantExit.toString() + ".");
+            }
+        }
+    } else {
+        utils:log("\t[INFO] No enforced doc path available — skipping Devant button injection.");
+    }
+    utils:log("");
+
+    // Step 15: Append Ballerina Central examples link to the workflow doc (if examples exist)
+    utils:log("[STEP 15] Checking Ballerina Central for connector examples link...");
     if enforcedDocPath != "" {
         os:Process|error examplesProc = os:exec({
             value: "agent/.venv/bin/python",
@@ -230,8 +254,8 @@ public function main() returns error? {
     }
     utils:log("");
 
-    // Step 15: Crop UI chrome from screenshots produced by the agent
-    utils:log("[STEP 15] Cropping screenshots...");
+    // Step 16: Crop UI chrome from screenshots produced by the agent
+    utils:log("[STEP 16] Cropping screenshots...");
     os:Process|error cropProc = os:exec({
         value: "agent/.venv/bin/python",
         arguments: ["agent/crop_screenshots.py"]
@@ -250,7 +274,7 @@ public function main() returns error? {
     }
     utils:log("");
 
-    // ── Finalise ────────────────────────────────────────────────────────────
+    // ── Phase 5 (cont.): Finalise ─────────────────────────────────────────────
 
     time:Utc endTime = time:utcNow();
     decimal durationSecs = time:utcDiffSeconds(endTime, startTime);
@@ -270,8 +294,8 @@ public function main() returns error? {
     }
     decimal totalCombinedCostUsd = totalCostUsd + agentCostUsd;
 
-    // Step 16: Write run log to artifacts/run-log/
-    utils:log("[STEP 16] Writing run log...");
+    // Step 17: Write run log to artifacts/run-log/
+    utils:log("[STEP 17] Writing run log...");
     string runLogDir = "./artifacts/run-log";
     io:Error? keepErr = io:fileWriteString(runLogDir + "/.keep", "");
     if keepErr is io:Error {

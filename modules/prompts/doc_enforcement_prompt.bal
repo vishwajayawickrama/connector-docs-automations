@@ -36,12 +36,12 @@ Replace [ConnectorName] with the actual connector name already present in the do
 7. Code fence blocks — remove ALL triple-backtick fenced code blocks EXCEPT mermaid diagram blocks (fenced with triple backticks and the "mermaid" language tag) inside the ## Architecture section, which must be preserved exactly as-is. Remove all other triple-backtick blocks.
 8. Stage 1 setup actions — remove steps describing code-server navigation, terminal commands, or workspace creation
 9. Internal automation details — remove references to browser_type, browser_fill, browser_navigate, "helper dropdown", MCP tool calls, or any automation-internal language
-10. Extra sections — remove any H2 section not in the fixed template (see SECTION STRUCTURE below). **Exception: preserve "## More Examples" if present — it is appended by the pipeline after enforcement.**
+10. Extra sections — remove any H2 section not in the fixed template (see SECTION STRUCTURE below). **Exception: preserve "## More code examples" if present — it is appended by the pipeline after enforcement.**
 11. Numbered or non-template H2 headers — replace or remove; only the fixed template H2s are allowed
 12. Frontmatter / metadata blocks — remove YAML frontmatter (--- blocks), JSON metadata, or similar
 13. Timestamp footers — remove "Generated on", "Last updated", date stamps, or similar footers
-14. Summary / Conclusion sections — remove any H2 or H3 named "Summary", "Conclusion", "Next Steps", "Recap", or similar closing prose sections. **Exception: do NOT remove a section named "## More Examples"** — this is a valid optional section added by the pipeline.
-15. Numbered steps in the "Setting Up" section — the ## Setting Up section must contain ONLY the redirect note linking to the shared project-creation guide; remove any ### Step N headers, screenshot image references, or inline parameters from this section
+14. Summary / Conclusion sections — remove any H2 or H3 named "Summary", "Conclusion", "Next Steps", "Recap", or similar closing prose sections. **Exception: do NOT remove a section named "## More code examples"** — this is a valid optional section added by the pipeline.
+15. Numbered steps in the "Setting up" section — the ## Setting up section must contain ONLY the redirect note linking to the shared project-creation guide; remove any ### Step N headers, screenshot image references, or inline parameters from this section
 
 ---
 
@@ -49,29 +49,29 @@ Replace [ConnectorName] with the actual connector name already present in the do
 
 The document MUST contain exactly the following H2 sections, with these exact names, in this exact order:
 
-1. ## What You'll Build
+1. ## What you'll build
 2. ## Architecture                    ← ALWAYS present; contains only a single mermaid flowchart code block
 3. ## Prerequisites                   ← OMIT this section entirely if no external service or credentials are needed
-4. ## Setting Up the [ConnectorName] Integration
-5. ## Adding the [ConnectorName] Connector
-6. ## Configuring the [ConnectorName] Connection
-7. ## Configuring the [ConnectorName] [OperationName] Operation
-8. ## More Examples                   ← OPTIONAL — present only if appended by the pipeline (Ballerina Central examples verified)
+4. ## Setting up the [ConnectorName] integration
+5. ## Adding the [ConnectorName] connector
+6. ## Configuring the [ConnectorName] connection
+7. ## Configuring the [ConnectorName] [OperationName] operation
+8. ## More code examples              ← OPTIONAL — present only if appended by the pipeline (Ballerina Central examples verified)
 
 Rules:
 - Replace [ConnectorName] and [OperationName] with the actual names from the document
-- Do NOT rename, reorder, add, or remove sections (except omitting Prerequisites and More Examples when not applicable)
-- Do NOT add section numbers to H2 headers (e.g. "## 1. What You'll Build" is wrong)
-- Do NOT add a "## More Examples" section yourself — it is added deterministically by the pipeline only when Ballerina Central confirms examples exist for the connector
+- Do NOT rename, reorder, add, or remove sections (except omitting Prerequisites and More code examples when not applicable)
+- Do NOT add section numbers to H2 headers (e.g. "## 1. What you'll build" is wrong)
+- Do NOT add a "## More code examples" section yourself — it is added deterministically by the pipeline only when Ballerina Central confirms examples exist for the connector
 
-### ## Setting Up the [ConnectorName] Integration
+### ## Setting up the [ConnectorName] integration
 
 This section MUST contain ONLY the redirect note linking to the shared project-creation guide.
 It must NOT contain any numbered steps (### Step N headers), screenshot image references, or parameter bullets.
 If steps or images are present in this section, remove them entirely.
-Numbered steps begin in the "## Adding the [ConnectorName] Connector" section, starting at Step 1.
+Numbered steps begin in the "## Adding the [ConnectorName] connector" section, starting at Step 1.
 
-### ## What You'll Build
+### ## What you'll build
 
 Must contain:
 - 2–3 sentences describing what is built
@@ -88,11 +88,12 @@ Cross-check every operation listed under "**Operations used:**" against the actu
 Include ONLY if the workflow requires an external service, credentials, or accounts.
 If no external dependency exists, omit this section entirely.
 
-### ## Configuring the [ConnectorName] Connection
+### ## Configuring the [ConnectorName] connection
 
 This section MUST contain ONLY steps that directly configure and save the connection:
-- Filling in connection parameters (host, credentials, options, etc.)
+- Filling in connection parameters (binding each field to a Configurable variable)
 - Clicking Save / Create to persist the connection
+- Setting actual configurable values via the Configurations panel (the CFG-2 step — MUST be preserved)
 
 Steps that do NOT belong here (move them to the operation section instead):
 - Adding an Automation entry point
@@ -100,7 +101,7 @@ Steps that do NOT belong here (move them to the operation section instead):
 - Selecting an operation from the Connections tree
 - Any canvas action unrelated to the connection form itself
 
-### ## Configuring the [ConnectorName] [OperationName] Operation
+### ## Configuring the [ConnectorName] [OperationName] operation
 
 This is the last section of the document.
 Combine selecting the operation AND configuring its parameters into ONE step — do not split them into separate steps.
@@ -115,7 +116,7 @@ Each step must follow this exact format:
 
 ### Step N: [Description of what was done]
 [One sentence describing the action. If parameters were configured, list them as bullets:]
-- **[paramName]**: [value used] — [one-line description]
+- **[paramName]** — [one-line description of what this parameter controls]
 ![screenshot description](../screenshots/[prefix]_screenshot_NN.png)
 
 Rules:
@@ -154,9 +155,14 @@ Examples of fixes:
 - "## Adding The Kafka Connector" → "## Adding the Kafka connector"
 - "### Step 5: Save And Review The Flow" → "### Step 5: Save and review the flow"
 
-EXCEPTION: The fixed H2 section names defined in SECTION STRUCTURE above (What You'll Build,
-Architecture, Prerequisites, Setting Up …, Adding …, Configuring … Connection,
-Configuring … Operation, More Examples) are authoritative — keep their exact casing.
+EXCEPTION: The fixed H2 section names defined in SECTION STRUCTURE above are authoritative —
+keep their exact casing (which is already sentence case):
+  ## What you'll build | ## Architecture | ## Prerequisites
+  ## Setting up the [ConnectorName] integration
+  ## Adding the [ConnectorName] connector
+  ## Configuring the [ConnectorName] connection
+  ## Configuring the [ConnectorName] [OperationName] operation
+  ## More code examples
 Apply sentence case to H3 step titles and all other headings.
 
 ### Rule MSG-2: No period at the end of headings
@@ -205,7 +211,36 @@ Example: "Android, iOS and Windows" → "Android, iOS, and Windows"
 Use em dashes (—) with no surrounding spaces to set off parenthetical phrases in prose.
 Example: "use pipelines — logical groups — to..." → "use pipelines—logical groups—to..."
 EXCEPTION: Do NOT apply this rule to parameter bullet lines where " — " is the intentional
-separator between the parameter value and its description (e.g., **host**: localhost — the database host).
+separator between the parameter name and its description (e.g., **host** — the Redis server hostname).
+
+---
+
+## CONFIGURABLE USAGE
+
+Connection parameter steps MUST document configurable variable references, not hardcoded literal values.
+
+### Rule CFG-1: Parameter bullets must reference configurables
+
+Every bullet point in a connection parameter step MUST follow this format:
+  - **[paramName]** — [one-line description of what this parameter controls]
+
+The following are VIOLATIONS — fix them:
+  - **host**: localhost — ...        ← contains a literal value; remove the value, keep only the name and description
+  - **port**: 6379 — ...            ← contains a literal value; remove the value
+  - **password**: secret123 — ...   ← contains a literal value (credential), never keep this
+
+The step prose (the sentence before the bullets) may still mention that Configurable variables were used — that context is fine. But the bullet lines themselves must NOT contain values or configurable names.
+
+Do NOT flag parameters that have no value (e.g., a bullet that already reads **paramName** — description is correct).
+
+### Rule CFG-2: Configurations panel step must be present
+
+The "## Configuring the [ConnectorName] Connection" section MUST contain a step titled "Set actual values for your configurables" (or similar wording). This step must:
+- Direct the user to click **Configurations** in the left panel of WSO2 Integrator (at the bottom of the project tree, under Data Mappers)
+- List every configurable created (name, type, brief description of expected value)
+- NOT reference Config.toml or any pro-code file editing
+
+If this step is absent, add it as the last step of the "## Configuring the [ConnectorName] Connection" section, immediately after the "save connection" step.
 
 ---
 
@@ -219,8 +254,8 @@ Each screenshot must be embedded in the step whose **action directly produced wh
 - If _01_palette is in a search/select step, move it to the step that opens the palette.
 
 **Screenshot 02 — Connection form filled (_02_connection_form):**
-- MUST be embedded in the step that describes **filling in ALL connection parameters** (host, credentials, etc.), before saving.
-- That step MUST list every configured parameter as a bullet: **[paramName]**: [value] — [description].
+- MUST be embedded in the step that describes **binding ALL connection parameters to Configurable variables** (fields show configurable variable names, not literal values), before saving.
+- That step MUST list every configured parameter as a bullet: **[paramName]** — [description].
 - MUST NOT appear in a step that describes opening the form or saving/confirming.
 
 **Screenshot 03 — Canvas / Connections panel after save (_03_connections_list):**
@@ -261,6 +296,7 @@ Each screenshot must be embedded in the step whose **action directly produced wh
 3. Ensure the SECTION STRUCTURE is correct (right names, right order, no extras)
 4. Ensure every step follows the STEP FORMAT
 5. Apply all MICROSOFT STYLE GUIDE COMPLIANCE rules (MSG-1 through MSG-8)
+5b. Apply CONFIGURABLE USAGE rules (CFG-1 and CFG-2)
 6. Preserve all image paths exactly as-is
 7. Output the corrected document — raw Markdown only, starting with the # title line
 `;

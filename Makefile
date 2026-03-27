@@ -1,6 +1,8 @@
 .PHONY: help setup setup-python setup-bal build run \
         start-agent stop-agent \
         crop-screenshots crop-screenshots-dry crop-screenshots-backup \
+        publish-docs publish-docs-dry publish-docs-no-preview \
+        cleanup cleanup-dry \
         clean clean-artifacts
 
 # ── Default ──────────────────────────────────────────────────────────────────
@@ -17,6 +19,21 @@ help:
 	@echo "    make run              Run the full 12-step pipeline (bal run + crop)"
 	@echo "    make start-agent      Start the Python agent server in the foreground"
 	@echo "    make stop-agent       Send shutdown request to the agent server"
+	@echo ""
+	@echo "  Publish"
+	@echo "    make publish-docs             Publish docs + create PR (auto-detects docs-integrator path)"
+	@echo "    make publish-docs-dry         Dry run — print planned actions, no changes"
+	@echo "    make publish-docs-no-preview  Publish docs without Playwright preview screenshots"
+	@echo "    PUBLISH_ARGS='...'            Pass extra flags, e.g. PUBLISH_ARGS='--category messaging'"
+	@echo "    DOCS_REPO=PATH                Override docs-integrator path"
+	@echo ""
+	@echo "  Cleanup"
+	@echo "    make cleanup                  Publish integration sample PR + delete local project + close tabs"
+	@echo "    make cleanup-dry              Dry run — print planned actions, no changes"
+	@echo "    CODE_SERVER_PORT=N            Override code-server port (default: 8080)"
+	@echo "    SAMPLES_REPO=PATH             Override integration-samples path"
+	@echo "    PROJECT_PATH=PATH             Manually set project path (writes created-project.txt)"
+	@echo "    CLEANUP_ARGS='...'            Pass extra flags, e.g. CLEANUP_ARGS='--no-publish'"
 	@echo ""
 	@echo "  Artifacts"
 	@echo "    make clean            Remove artifacts/, target/, Dependencies.toml, agent/.venv"
@@ -65,6 +82,51 @@ start-agent: agent/.venv/.installed
 stop-agent:
 	@echo "→ Sending shutdown to agent server..."
 	curl -s -X POST http://localhost:8765/shutdown || echo "Agent server not running."
+
+# ── Publish docs ─────────────────────────────────────────────────────────────
+# DOCS_REPO   — override the docs-integrator path (optional; defaults to ../docs-integrator)
+# PUBLISH_ARGS — extra flags passed to publish_docs.py
+
+DOCS_REPO ?=
+
+_publish_docs_cmd = agent/.venv/bin/python scripts/publish_docs.py \
+  $(if $(DOCS_REPO),--docs-repo "$(DOCS_REPO)",) \
+  $(PUBLISH_ARGS)
+
+publish-docs: agent/.venv/.installed
+	@echo "→ Publishing connector docs..."
+	$(_publish_docs_cmd)
+
+publish-docs-dry: agent/.venv/.installed
+	@echo "→ Publishing connector docs (dry run)..."
+	$(_publish_docs_cmd) --dry-run
+
+publish-docs-no-preview: agent/.venv/.installed
+	@echo "→ Publishing connector docs (no preview)..."
+	$(_publish_docs_cmd) --no-preview
+
+# ── Cleanup workspace ────────────────────────────────────────────────────────
+# CODE_SERVER_PORT — code-server port (default: 8080)
+# SAMPLES_REPO     — override integration-samples path (optional)
+# CLEANUP_ARGS     — extra flags passed to cleanup_workspace.py
+
+CODE_SERVER_PORT ?= 8080
+SAMPLES_REPO ?=
+PROJECT_PATH ?=
+
+_cleanup_cmd = agent/.venv/bin/python agent/cleanup_workspace.py \
+  --url http://localhost:$(CODE_SERVER_PORT) \
+  $(if $(SAMPLES_REPO),--samples-repo "$(SAMPLES_REPO)",) \
+  $(if $(PROJECT_PATH),--project-path "$(PROJECT_PATH)",) \
+  $(CLEANUP_ARGS)
+
+cleanup: agent/.venv/.installed
+	@echo "→ Publishing integration sample, deleting local project, closing tabs..."
+	$(_cleanup_cmd)
+
+cleanup-dry: agent/.venv/.installed
+	@echo "→ Cleanup dry run..."
+	$(_cleanup_cmd) --dry-run
 
 # ── Artifacts ────────────────────────────────────────────────────────────────
 clean:

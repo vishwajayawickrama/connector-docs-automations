@@ -81,8 +81,8 @@ def extract_examples_section(readme: str) -> str | None:
 
 
 def build_section(body: str) -> str:
-    """Wrap extracted examples body under '## More Code Examples'."""
-    return f"\n## More Code Examples\n\n{body}\n"
+    """Wrap extracted examples body under '## More code examples'."""
+    return f"\n## More code examples\n\n{body}\n"
 
 
 def main() -> None:
@@ -98,7 +98,7 @@ def main() -> None:
     content = doc_path.read_text(encoding="utf-8")
 
     # Idempotency: skip if already appended
-    if "## More Code Examples" in content:
+    if "## More code examples" in content:
         print("[INFO] append_examples_link: 'More Code Examples' section already present — skipping.")
         sys.exit(0)
 

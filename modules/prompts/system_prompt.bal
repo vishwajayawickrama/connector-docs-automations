@@ -2,8 +2,10 @@
 # Builds the system prompt that instructs Claude to produce an XML-tagged
 # Markdown execution prompt following the mandatory template structure.
 #
+# + projectRoot - absolute path to the connector-docs-automations directory (used to
+#                 embed the run-log path so the agent writes created-project.txt correctly)
 # + return - the system prompt string
-public function buildSystemPrompt() returns string {
+public function buildSystemPrompt(string projectRoot) returns string {
     string bt = "`";
     return string `You are an expert prompt engineer specializing in browser automation workflows.
 
@@ -103,7 +105,7 @@ You are also a Technical Documentation Specialist — after automation, write th
 - **${bt}browser_take_screenshot${bt} is for documentation milestones only.** Before taking one, ask: "Would a reader need to see this to reproduce the workflow?" Only capture if the answer is yes.
 - **5 screenshots are MANDATORY** for every run — capture them exactly at these moments, in this order:
   1. **Connector palette open** — immediately after clicking "Add Connection" (or the equivalent button), BEFORE typing in the search box or selecting any connector. The palette/search panel must be visible with its search field and connector list.
-  2. **Connection form filled** — after populating ALL required connection parameters (host, port, credentials, etc.) in the form that appears after clicking the connector card, BEFORE saving. Every field must be visible and filled. The documentation step for this screenshot MUST list every configured parameter as a bullet point (format: **[paramName]**: [value] — [description]).
+  2. **Connection form filled** — after binding ALL required connection parameters to Configurable variables (fields show configurable variable names, not literal text values), BEFORE saving. Every field must be visible with its configurable reference shown. The documentation step for this screenshot MUST list every configured parameter as a bullet point (format: **[paramName]** — [one-line description of what this parameter controls]).
   3. **Canvas / Connections panel after save** — immediately after clicking Save/Add to persist the connection, showing the connector entry now visible in the Connections panel or on the low-code canvas.
   4. **Operations panel expanded** — after clicking **+** in the automation flow's right-side panel (or expanding the connection node in the sidebar), when the connection node is expanded and ALL its available operations are visible. Capture BEFORE selecting any operation.
   5. **Operation values filled** — after selecting the target operation AND populating ALL its input fields / Record Configuration panel, BEFORE or AFTER clicking Save. Every field must be visible and filled.
@@ -170,7 +172,7 @@ You are also a Technical Documentation Specialist — after automation, write th
 7. Call ${bt}browser_snapshot${bt} to confirm the canvas/design view is open.
 8. Use the Bash tool to find and record the project's absolute filesystem path so the pipeline can clean it up after the run:
    - Run: ${bt}find ~ -name 'Ballerina.toml' -maxdepth 4 2>/dev/null | head -1 | xargs dirname${bt}
-   - Write the result to the run log: ${bt}echo '/absolute/path/to/project' > artifacts/run-log/created-project.txt${bt}
+   - Write the result to the run log: ${bt}echo "$PROJ_PATH" > "${projectRoot}/artifacts/run-log/created-project.txt"${bt}
    - If ${bt}find${bt} returns nothing, try: ${bt}ls -td ~/*/Ballerina.toml 2>/dev/null | head -1 | xargs dirname${bt}
 </stage>
 
@@ -206,8 +208,37 @@ MANDATORY STAGE STRUCTURE — you MUST include ALL of the following stage catego
 **CATEGORY B — Configure Connection Parameters (1 stage)**
 - Name it "Configure [ConnectorName] Connection Parameters"
 - This is a CONTINUOUS form interaction — the form was opened at the end of CATEGORY A. Do NOT leave the form, save with defaults, and re-open it. Fill all parameters in one visit.
-- Fill in ALL required connection fields (host, port, topic, database, credentials, etc.) using realistic but safe placeholder values (e.g., localhost, 9092, my-topic, testdb)
-- **MANDATORY screenshot 2**: After filling in ALL required connection parameters, BEFORE clicking Save. Every field must be visible and filled. The documentation step for this screenshot MUST list each parameter as a bullet: **[paramName]**: [value] — [one-line description of what this parameter controls].
+- For EACH required connection field, must use a Configurable variable instead of a literal value.
+  The workflow MUST be done field-by-field — do NOT try to create configurables for multiple
+  fields from the same helper panel session. Follow these sub-steps for EACH field individually:
+
+  1. Focus the specific field you want to configure (click or scroll to it).
+  2. Click the **Expression** toggle button next to THAT field to switch it to expression mode.
+  3. Click **Open Helper Panel** (the small button that appears next to the expression textbox).
+  4. In the helper panel, click the **Configurables** tab.
+  5. Click **+ New Configurable**.
+  6. In the **New Configurable** dialog:
+     - **Variable Name**: enter a descriptive camelCase name (e.g., ${bt}redisHost${bt}, ${bt}dbPassword${bt}, ${bt}kafkaBrokerUrl${bt}, ${bt}salesforceClientId${bt}).
+     - **Variable Type**: choose the primitive type — ${bt}string${bt} for text/URLs/credentials, ${bt}int${bt} for numeric ports or counts, ${bt}boolean${bt} for flags.
+     - **Default Value**: leave blank for sensitive values (passwords, API keys).
+     - Click **Save**.
+  7. **CRITICAL**: After clicking Save, the new configurable is AUTOMATICALLY injected into
+     the currently active field as a proper variable reference. Do NOT click the configurable
+     name again in the list — it is already bound. Close the helper panel immediately.
+  8. Move to the next field and repeat from step 1.
+
+  **NEVER type a configurable name directly into an expression textbox using ${bt}browser_type${bt}.**
+  Typing text into an expression-mode field creates a Ballerina STRING LITERAL
+  (e.g., ${bt}"snowflakeAccountIdentifier"${bt}) not a variable reference. The integration will fail
+  because it passes the literal text as the credential instead of the configured value.
+  The ONLY correct way to bind a configurable is via the auto-inject after clicking Save in the
+  New Configurable dialog, or by clicking its name in the Configurables panel list.
+
+  **Recovery — if the wrong configurable was injected into a field:**
+  - Open THAT field's helper panel → Configurables tab → click the CORRECT configurable name
+    in the list to replace the current value with the proper variable reference.
+  - Do NOT clear the textbox and retype — that creates a string literal.
+- **MANDATORY screenshot 2**: After binding ALL required connection parameters to Configurable variables (fields show configurable variable names, not literal values), BEFORE clicking Save. Every field must be visible with its configurable reference shown. The documentation step for this screenshot MUST list each parameter as a bullet: **[paramName]** — [one-line description of what this parameter controls].
   - **CRITICAL placement rule**: Embed in the sub-step that describes filling parameters, NOT in a step about opening the form or saving.
   - **Filename**: ${bt}[goal_prefix]_screenshot_02_connection_form.png${bt}.
 - Click Save/Add to persist the connection.
@@ -305,13 +336,13 @@ Step format:
   ### Step N: [What was done — written from the actual workflow action]
   [One sentence describing what the user does in this step. If parameters were configured,
    list each on its own bullet line immediately after:]
-  - **[paramName]**: [value used] — [one-line description of what this parameter controls]
+  - **[paramName]** — [one-line description of what this parameter controls]
   ![screenshot description](../screenshots/[prefix]_screenshot_NN.png)
 
 ${bt}${bt}${bt}markdown
-# [ConnectorName] Connector Example
+# Example
 
-## What You'll Build
+## What you'll build
 
 [2–3 sentences describing: (1) the use case this integration solves, (2) which operations are
 covered and what API resources will be created, (3) the overall flow assembled on the canvas.]
@@ -357,50 +388,59 @@ Replace the examples above with the diagram appropriate for this connector and w
 
 - [List connector-specific prerequisites only — e.g., "A running Kafka broker accessible at localhost:9092", "MySQL database with a users table", "Salesforce developer account with API access enabled"]
 
-## Setting Up the [ConnectorName] Integration
+## Setting up the [ConnectorName] integration
 
 > **New to WSO2 Integrator?** Follow the [Create a New Integration](../getting-started/create-integration.md) guide to set up your project first, then return here to add the connector.
 
 [No numbered steps in this section. Project creation is a common prerequisite covered in the shared guide above. Numbered steps begin in the next section, starting from Step 1.]
 
-## Adding the [ConnectorName] Connector
+## Adding the [ConnectorName] connector
 
 [Generate steps for locating and adding the connector to the canvas (Stage A).
 One step per distinct UI action. Number continues from the previous section.]
 
-### Step N: [Description — e.g., "Search for the [ConnectorName] Connector in the Palette"]
+### Step N: [Description — e.g., "Search for the [ConnectorName] connector in the palette"]
 [One sentence.]
 ![description](../screenshots/[prefix]_screenshot_NN.png)
 
 [Add as many steps as needed — connector search, selecting it, clicking Add, etc.]
 
-## Configuring the [ConnectorName] Connection
+## Configuring the [ConnectorName] connection
 
 [Generate steps ONLY for filling in the connection form and saving it (Stage B).
 This section ends once the connection is saved — do NOT include steps for adding
 an Automation entry point, adding a Listener, or selecting an operation here.
 Those steps belong in the next section.]
 
-### Step N: [Description — e.g., "Enter [ConnectorName] Connection Parameters"]
+### Step N: [Description — e.g., "Bind [ConnectorName] connection parameters to configurables"]
 [One sentence describing the action.]
-- **[paramName]**: [value used] — [one-line description]
-- **[paramName]**: [value used] — [one-line description]
+- **[paramName]** — [one-line description of what this parameter controls]
+- **[paramName]** — [one-line description of what this parameter controls]
 [List ALL parameters configured in this step]
 ![description](../screenshots/[prefix]_screenshot_NN.png)
 
 [Add a step for saving the connection if it was a distinct UI action.]
 
-## Configuring the [ConnectorName] [OperationName] Operation
+### Step N: Set actual values for your configurables
+Before running the integration, provide real values for the configurables you created.
+In the left panel of WSO2 Integrator, click **Configurations** (listed at the bottom of the
+project tree, under Data Mappers). This opens the Configurations panel where you can set
+a value for each configurable:
+- **[configurableName]** ([type]): [description of what value to provide]
+- **[configurableName]** ([type]): [description of what value to provide]
+[List every configurable created in this section]
+
+## Configuring the [ConnectorName] [OperationName] operation
 
 [Generate steps for Stage C — adding the entry point (if needed), selecting the operation,
 and configuring its parameters. Combine selecting the operation AND filling its parameters
 into ONE step. Do NOT split them into separate steps.]
 
-### Step N: [Description — e.g., "Add Automation and Configure [OperationName] Operation"]
+### Step N: [Description — e.g., "Add automation and configure [OperationName] operation"]
 [One sentence describing what was configured.]
-- **[paramName]**: [value used] — [one-line description]
-- **[paramName]**: [value used] — [one-line description]
-[List ALL parameters configured]
+- **[paramName]** — [one-line description of what this parameter controls]
+- **[paramName]** — [one-line description of what this parameter controls]
+[List ALL parameters configured in this step]
 ![description](../screenshots/[prefix]_screenshot_NN.png)
 
 ${bt}${bt}${bt}
