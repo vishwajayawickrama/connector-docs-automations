@@ -255,20 +255,7 @@ public function main() returns error? {
     // Step 16: Append Ballerina Central examples link to the workflow doc (if examples exist)
     utils:log("[STEP 16] Checking Ballerina Central for connector examples link...");
     if enforcedDocPath != "" {
-        os:Process|error examplesProc = os:exec({
-            value: "agent/.venv/bin/python",
-            arguments: ["agent/append_examples_link.py", enforcedDocPath]
-        });
-        if examplesProc is error {
-            utils:log("\t[WARN] Could not start append_examples_link.py: " + examplesProc.message());
-        } else {
-            int examplesExit = check examplesProc.waitForExit();
-            if examplesExit == 0 {
-                utils:log("\t[INFO] Examples link step complete.");
-            } else {
-                utils:log("\t[WARN] append_examples_link.py exited with code " + examplesExit.toString() + ".");
-            }
-        }
+        utils:appendExamplesSection(enforcedDocPath);
     } else {
         utils:log("\t[INFO] No enforced doc path available — skipping examples link.");
     }
@@ -316,64 +303,21 @@ public function main() returns error? {
 
     // Step 18: Write run log to artifacts/run-log/
     utils:log("[STEP 18] Writing run log...");
-    string runLogDir = "./artifacts/run-log";
-    io:Error? keepErr = io:fileWriteString(runLogDir + "/.keep", "");
-    if keepErr is io:Error {
-        utils:log("\t[WARN] Could not create run-log dir: " + keepErr.message());
-    }
-    string timestamp = time:utcToString(startTime);
-    // Build a filename-safe timestamp (replace : and . with -)
-    string tsSlug = re `[:\.]`.replaceAll(timestamp, "-");
-    string logPath = runLogDir + "/" + goalSlug + "_" + tsSlug + ".json";
-
-    json agentCostJson = agentCost is agent_client:AgentCost ? {
-        "totalCostUsd":    agentCost.totalCostUsd,
-        "inputTokens":     agentCost.inputTokens,
-        "outputTokens":    agentCost.outputTokens,
-        "cacheReadTokens": agentCost.cacheReadTokens,
-        "cacheWriteTokens":agentCost.cacheWriteTokens,
-        "numTurns":        agentCost.numTurns
-    } : "not available";
-
-    json logJson = {
-        "goal": userGoal,
-        "goalSlug": goalSlug,
-        "model": "claude-sonnet-4-6",
-        "startTime": timestamp,
-        "endTime": time:utcToString(endTime),
-        "durationSeconds": durationSecs,
-        "llmCalls": {
-            "promptGeneration": {
-                "inputTokens": promptGenUsage.inputTokens,
-                "outputTokens": promptGenUsage.outputTokens,
-                "costUsd": promptGenUsage.costUsd
-            },
-            "slugGeneration": {
-                "inputTokens": slugGenUsage.inputTokens,
-                "outputTokens": slugGenUsage.outputTokens,
-                "costUsd": slugGenUsage.costUsd
-            },
-            "docEnforcement": {
-                "inputTokens": docEnfUsage.inputTokens,
-                "outputTokens": docEnfUsage.outputTokens,
-                "costUsd": docEnfUsage.costUsd
-            },
-            "agentExecution": agentCostJson
-        },
-        "totalDirectApiCostUsd": totalCostUsd,
-        "totalCombinedCostUsd": totalCombinedCostUsd,
-        "artifacts": {
-            "executionPromptPath": promptPath,
-            "workflowDocPath": enforcedDocPath == "" ? "(not written)" : enforcedDocPath
-        }
-    };
-
-    io:Error? logWriteErr = io:fileWriteString(logPath, logJson.toJsonString());
-    if logWriteErr is io:Error {
-        utils:log("\t[WARN] Could not write run log: " + logWriteErr.message());
-    } else {
-        utils:log("\t[INFO] Run log saved to: " + logPath);
-    }
+    utils:writeRunLog({
+        goal:                userGoal,
+        goalSlug:            goalSlug,
+        startTime:           startTime,
+        endTime:             endTime,
+        durationSecs:        durationSecs,
+        promptGenUsage:      promptGenUsage,
+        slugGenUsage:        slugGenUsage,
+        docEnfUsage:         docEnfUsage,
+        agentCost:           agentCost,
+        totalDirectCostUsd:  totalCostUsd,
+        totalCombinedCostUsd: totalCombinedCostUsd,
+        promptPath:          promptPath,
+        workflowDocPath:     enforcedDocPath == "" ? "(not written)" : enforcedDocPath
+    });
     utils:log("");
 
     // Print pipeline stats

@@ -30,7 +30,7 @@ You will receive a connector workflow documentation file. Your job is to fix it 
 
 The very first line of the document MUST be:
 
-  # [ConnectorName] Connector Example
+  # Example
 
 Replace [ConnectorName] with the actual connector name already present in the document.
 
@@ -50,6 +50,7 @@ Replace [ConnectorName] with the actual connector name already present in the do
 5a. "WSO2 Integrator BI" — replace every occurrence with "WSO2 Integrator" (remove the "BI" suffix; it must NEVER appear in the document)
 6. .bal file references — remove references to .bal files or Ballerina-syntax explanations
 7. Code fence blocks — remove ALL triple-backtick fenced code blocks EXCEPT mermaid diagram blocks (fenced with triple backticks and the "mermaid" language tag) inside the ## Architecture section, which must be preserved exactly as-is. Remove all other triple-backtick blocks.
+16. Literal \n in mermaid node labels — inside every mermaid fenced block, replace every occurrence of the literal two-character sequence \n inside node brackets ([...], (...), {...}) with a single space character.
 8. Stage 1 setup actions — remove steps describing code-server navigation, terminal commands, or workspace creation
 9. Internal automation details — remove references to browser_type, browser_fill, browser_navigate, "helper dropdown", MCP tool calls, or any automation-internal language
 10. Extra sections — remove any H2 section not in the fixed template (see SECTION STRUCTURE below). **Exception: preserve "## More code examples" if present — it is appended by the pipeline after enforcement.**
