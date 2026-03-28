@@ -1,3 +1,19 @@
+// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).
+//
+// WSO2 LLC. licenses this file to you under the Apache License,
+// Version 2.0 (the "License"); you may not use this file except
+// in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied. See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
 // doc_enforcement_prompt.bal
 // Post-processing enforcement prompt sent to Claude API after the agent writes
 // the workflow documentation. This prompt has the rules fresh in context with
@@ -87,6 +103,10 @@ Cross-check every operation listed under "**Operations used:**" against the actu
 
 Include ONLY if the workflow requires an external service, credentials, or accounts.
 If no external dependency exists, omit this section entirely.
+
+Content rules for this section:
+- List ONLY connector-specific external requirements (e.g., a running Kafka broker, a MySQL database, Salesforce credentials).
+- Do NOT mention WSO2 Integrator, the WSO2 Integrator extension, VS Code, code-server, Ballerina, or any tooling / environment setup. Those are assumed and must not appear here.
 
 ### ## Configuring the [ConnectorName] connection
 

@@ -1,6 +1,22 @@
+// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).
+//
+// WSO2 LLC. licenses this file to you under the Apache License,
+// Version 2.0 (the "License"); you may not use this file except
+// in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied. See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
 import ballerina/http;
 import ballerina/lang.runtime;
-import ballerinaconnectors/documentation_automation_workflow.utils;
+import wso2/example_doc_generator.utils;
 
 # Job submission response from the agent server.
 type StartResponse record {
@@ -57,9 +73,13 @@ public function runClaudeAgent(string promptPath, string agentUrl) returns Agent
     utils:log("\t[INFO] Job submitted: " + jobId);
 
     // Poll every second; print new log lines as they arrive
+    // Limit to 5400 attempts (90 minutes) to prevent infinite hangs.
     int lastLogCount = 0;
-    while true {
+    int attempts = 0;
+    int maxAttempts = 5400;
+    while attempts < maxAttempts {
         runtime:sleep(1);
+        attempts += 1;
         http:Response pollResp = check agentClient->get(string `/jobs/${jobId}`);
         json pollBody = check pollResp.getJsonPayload();
         JobStatus jobStatus = check pollBody.cloneWithType(JobStatus);
@@ -75,5 +95,9 @@ public function runClaudeAgent(string promptPath, string agentUrl) returns Agent
             utils:log("\t[INFO] Claude agent finished.");
             return jobStatus.cost;
         }
+        if jobStatus.status == "error" {
+            return error(string `Agent job ${jobId} failed. Check agent logs for details.`);
+        }
     }
+    return error(string `Agent job ${jobId} did not complete within ${maxAttempts} seconds.`);
 }

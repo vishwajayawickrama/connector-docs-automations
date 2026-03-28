@@ -1,3 +1,19 @@
+# Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).
+#
+# WSO2 LLC. licenses this file to you under the Apache License,
+# Version 2.0 (the "License"); you may not use this file except
+# in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
 """
 Claude Agent SDK HTTP server.
 
@@ -41,6 +57,7 @@ from claude_agent_sdk import (
 CWD = str(Path(__file__).parent.parent)
 
 jobs: dict[str, dict] = {}
+running_tasks: set[asyncio.Task] = set()
 
 
 def truncate_tool_input(tool_input: any, max_length: int = 500) -> str:
@@ -64,116 +81,121 @@ def truncate_tool_input(tool_input: any, max_length: int = 500) -> str:
 
 async def run_agent(job_id: str, prompt_path: str) -> None:
     jobs[job_id] = {"logs": [], "status": "running", "cost": None}
-    prompt = Path(prompt_path).read_text()
-
-    # Pre-create artifact directories so Playwright MCP can save screenshots
-    for subdir in ["screenshots", "workflow-docs"]:
-        (Path(CWD) / "artifacts" / subdir).mkdir(parents=True, exist_ok=True)
 
     def log(label: str, text: str) -> None:
         jobs[job_id]["logs"].append(f"[{label}] {text}")
 
-    async for message in query(
-        prompt=prompt,
-        options=ClaudeAgentOptions(
-            cwd=CWD,
-            allowed_tools=[
-                "Bash",
-                "Read",
-                "Write",
-                "Edit",
-                "mcp__playwright__browser_navigate",
-                "mcp__playwright__browser_navigate_back",
-                "mcp__playwright__browser_click",
-                "mcp__playwright__browser_type",
-                "mcp__playwright__browser_fill_form",
-                "mcp__playwright__browser_take_screenshot",
-                "mcp__playwright__browser_run_code",
-                "mcp__playwright__browser_snapshot",
-                "mcp__playwright__browser_evaluate",
-                "mcp__playwright__browser_wait_for",
-                "mcp__playwright__browser_select_option",
-                "mcp__playwright__browser_press_key",
-                "mcp__playwright__browser_hover",
-                "mcp__playwright__browser_drag",
-                "mcp__playwright__browser_tabs",
-                "mcp__playwright__browser_close",
-                "mcp__playwright__browser_resize",
-                "mcp__playwright__browser_handle_dialog",
-                "mcp__playwright__browser_file_upload",
-                "mcp__playwright__browser_install",
-                "mcp__playwright__browser_console_messages",
-                "mcp__playwright__browser_network_requests",
-            ],
-            mcp_servers={
-                "playwright": {
-                    "command": "npx",
-                    "args": [
-                        "@playwright/mcp@latest",
-                        "--headless",
-                        "--viewport-size=1720,968",
-                        f"--output-dir={CWD}/artifacts/screenshots",
-                    ],
-                }
-            },
-            permission_mode="acceptEdits",
-            max_buffer_size=32 * 1024 * 1024,  # 32 MB — screenshots at 1920x1080 can be 1.5–3 MB as base64
-        ),
-    ):
-        if isinstance(message, SystemMessage):
-            session_id = getattr(message, "session_id", None)
-            subtype = getattr(message, "subtype", "unknown")
-            label = "SESSION" if subtype == "init" else "SYSTEM"
-            detail = f"id={session_id}" if session_id else f"subtype={subtype}"
-            log(label, detail)
+    try:
+        prompt = Path(prompt_path).read_text()
 
-        elif isinstance(message, AssistantMessage):
-            for block in message.content:
-                if isinstance(block, TextBlock):
-                    log("CLAUDE", block.text)
+        # Pre-create artifact directories so Playwright MCP can save screenshots
+        for subdir in ["screenshots", "workflow-docs"]:
+            (Path(CWD) / "artifacts" / subdir).mkdir(parents=True, exist_ok=True)
+
+        async for message in query(
+            prompt=prompt,
+            options=ClaudeAgentOptions(
+                cwd=CWD,
+                allowed_tools=[
+                    "Bash",
+                    "Read",
+                    "Write",
+                    "Edit",
+                    "mcp__playwright__browser_navigate",
+                    "mcp__playwright__browser_navigate_back",
+                    "mcp__playwright__browser_click",
+                    "mcp__playwright__browser_type",
+                    "mcp__playwright__browser_fill_form",
+                    "mcp__playwright__browser_take_screenshot",
+                    "mcp__playwright__browser_run_code",
+                    "mcp__playwright__browser_snapshot",
+                    "mcp__playwright__browser_evaluate",
+                    "mcp__playwright__browser_wait_for",
+                    "mcp__playwright__browser_select_option",
+                    "mcp__playwright__browser_press_key",
+                    "mcp__playwright__browser_hover",
+                    "mcp__playwright__browser_drag",
+                    "mcp__playwright__browser_tabs",
+                    "mcp__playwright__browser_close",
+                    "mcp__playwright__browser_resize",
+                    "mcp__playwright__browser_handle_dialog",
+                    "mcp__playwright__browser_file_upload",
+                    "mcp__playwright__browser_install",
+                    "mcp__playwright__browser_console_messages",
+                    "mcp__playwright__browser_network_requests",
+                ],
+                mcp_servers={
+                    "playwright": {
+                        "command": "npx",
+                        "args": [
+                            "@playwright/mcp@latest",
+                            "--headless",
+                            "--viewport-size=1720,968",
+                            f"--output-dir={CWD}/artifacts/screenshots",
+                        ],
+                    }
+                },
+                permission_mode="acceptEdits",
+                max_buffer_size=32 * 1024 * 1024,  # 32 MB — screenshots at 1920x1080 can be 1.5–3 MB as base64
+            ),
+        ):
+            if isinstance(message, SystemMessage):
+                session_id = getattr(message, "session_id", None)
+                subtype = getattr(message, "subtype", "unknown")
+                label = "SESSION" if subtype == "init" else "SYSTEM"
+                detail = f"id={session_id}" if session_id else f"subtype={subtype}"
+                log(label, detail)
+
+            elif isinstance(message, AssistantMessage):
+                for block in message.content:
+                    if isinstance(block, TextBlock):
+                        log("CLAUDE", block.text)
+                    else:
+                        tool_name = getattr(block, "name", block.__class__.__name__)
+                        tool_input = getattr(block, "input", "")
+                        truncated_input = truncate_tool_input(tool_input)
+                        log("TOOL", f"{tool_name} → {truncated_input}")
+
+            elif isinstance(message, ResultMessage):
+                log("RESULT", message.result)
+
+                usage = getattr(message, "usage", None)
+                cost_usd = getattr(message, "total_cost_usd", None)
+                turns = getattr(message, "num_turns", None)
+
+                if usage:
+                    input_tokens = getattr(usage, "input_tokens", 0)
+                    output_tokens = getattr(usage, "output_tokens", 0)
+                    cache_read = getattr(usage, "cache_read_input_tokens", 0)
+                    cache_write = getattr(usage, "cache_creation_input_tokens", 0)
+                    log(
+                        "USAGE",
+                        f"input={input_tokens} output={output_tokens} "
+                        f"cache_read={cache_read} cache_write={cache_write}",
+                    )
                 else:
-                    tool_name = getattr(block, "name", block.__class__.__name__)
-                    tool_input = getattr(block, "input", "")
-                    truncated_input = truncate_tool_input(tool_input)
-                    log("TOOL", f"{tool_name} → {truncated_input}")
+                    input_tokens = output_tokens = cache_read = cache_write = 0
 
-        elif isinstance(message, ResultMessage):
-            log("RESULT", message.result)
+                if cost_usd is not None:
+                    log("USAGE", f"total_cost=${cost_usd:.6f}")
 
-            usage = getattr(message, "usage", None)
-            cost_usd = getattr(message, "total_cost_usd", None)
-            turns = getattr(message, "num_turns", None)
+                if turns is not None:
+                    log("USAGE", f"turns={turns}")
 
-            if usage:
-                input_tokens = getattr(usage, "input_tokens", 0)
-                output_tokens = getattr(usage, "output_tokens", 0)
-                cache_read = getattr(usage, "cache_read_input_tokens", 0)
-                cache_write = getattr(usage, "cache_creation_input_tokens", 0)
-                log(
-                    "USAGE",
-                    f"input={input_tokens} output={output_tokens} "
-                    f"cache_read={cache_read} cache_write={cache_write}",
-                )
-            else:
-                input_tokens = output_tokens = cache_read = cache_write = 0
+                # Store structured cost so it's returned in /jobs/<id> response
+                jobs[job_id]["cost"] = {
+                    "totalCostUsd": cost_usd,
+                    "inputTokens": input_tokens,
+                    "outputTokens": output_tokens,
+                    "cacheReadTokens": cache_read,
+                    "cacheWriteTokens": cache_write,
+                    "numTurns": turns,
+                }
 
-            if cost_usd is not None:
-                log("USAGE", f"total_cost=${cost_usd:.6f}")
-
-            if turns is not None:
-                log("USAGE", f"turns={turns}")
-
-            # Store structured cost so it's returned in /jobs/<id> response
-            jobs[job_id]["cost"] = {
-                "totalCostUsd": cost_usd,
-                "inputTokens": input_tokens,
-                "outputTokens": output_tokens,
-                "cacheReadTokens": cache_read,
-                "cacheWriteTokens": cache_write,
-                "numTurns": turns,
-            }
-
-    jobs[job_id]["status"] = "done"
+        jobs[job_id]["status"] = "done"
+    except Exception as exc:
+        log("ERROR", str(exc))
+        jobs[job_id]["status"] = "error"
 
 
 async def post_run(request: web.Request) -> web.Response:
@@ -192,7 +214,9 @@ async def post_run(request: web.Request) -> web.Response:
             {"error": f"prompt file not found: {resolved}"}, status=404
         )
     job_id = str(uuid.uuid4())
-    asyncio.create_task(run_agent(job_id, str(resolved)))
+    task = asyncio.create_task(run_agent(job_id, str(resolved)))
+    running_tasks.add(task)
+    task.add_done_callback(running_tasks.discard)
     return web.json_response({"job_id": job_id})
 
 

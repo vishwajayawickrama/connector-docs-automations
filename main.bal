@@ -1,26 +1,37 @@
+// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).
+//
+// WSO2 LLC. licenses this file to you under the Apache License,
+// Version 2.0 (the "License"); you may not use this file except
+// in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied. See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
 import ballerina/file;
 import ballerina/io;
 import ballerina/os;
 import ballerina/time;
 
-import ballerinaconnectors/documentation_automation_workflow.agent_client;
-import ballerinaconnectors/documentation_automation_workflow.ai_client;
-import ballerinaconnectors/documentation_automation_workflow.prompts;
-import ballerinaconnectors/documentation_automation_workflow.utils;
+import wso2/example_doc_generator.agent_client;
+import wso2/example_doc_generator.ai_client;
+import wso2/example_doc_generator.prompts;
+import wso2/example_doc_generator.utils;
 
-// Configuration
-configurable string llmApiKey = ?;
-configurable string userGoal = ?;
-configurable int codeServerPort = 8080;
-configurable int agentServerPort = 8765;
 
 # Entry point for the full automation pipeline.
 #
 # Phase 1  (Steps 1–2):  Pre-flight validation — API key and Claude Code CLI.
-# Phase 2  (Steps 3–5):  Infrastructure     — code-server and Python agent server.
-# Phase 3  (Steps 6–10): Prompt generation  — build, call Claude, format, save.
-# Phase 4  (Steps 11–13): Agent execution   — run agent, cleanup workspace, enforce doc structure.
-# Phase 5  (Steps 14–17): Post-processing   — inject Devant button, append examples link, crop screenshots, write run log.
+# Phase 2  (Steps 3–6):  Infrastructure     — code-server, extension check, and Python agent server.
+# Phase 3  (Steps 7–11): Prompt generation  — build, call Claude, format, save.
+# Phase 4  (Steps 12–14): Agent execution   — run agent, cleanup workspace, enforce doc structure.
+# Phase 5  (Steps 15–18): Post-processing   — inject Devant button, append examples link, crop screenshots, write run log.
 #
 # + return - an error if any step fails
 public function main() returns error? {
@@ -82,8 +93,24 @@ public function main() returns error? {
     utils:log("\t[INFO] Code-server URL: " + codeServerUrl);
     utils:log("");
 
-    // Step 5: Check if the Python agent server is running; start it if not
-    utils:log("[STEP 5] Checking Python agent server on port " + agentServerPort.toString() + "...");
+    // Step 5: Ensure the WSO2 Integrator extension is installed in code-server
+    utils:log("[STEP 5] Checking WSO2 Integrator extension (wso2.wso2-integrator)...");
+    boolean extInstalled = utils:checkExtensionInstalled("wso2.wso2-integrator");
+    if !extInstalled {
+        utils:log("\t[INFO] Extension not found. Trying marketplace install...");
+        string|error cwdForExt = file:getCurrentDir();
+        string projectRootForExt = cwdForExt is string ? cwdForExt : os:getEnv("PWD");
+        string vsixPath = projectRootForExt + "/extensions/wso2.wso2-integrator-0.2.1.vsix";
+        utils:log("\t[INFO] Fallback VSIX path: " + vsixPath);
+        check utils:ensureExtensionInstalled("wso2.wso2-integrator", vsixPath);
+        utils:log("\t[INFO] Extension installed successfully.");
+    } else {
+        utils:log("\t[INFO] WSO2 Integrator extension is already installed.");
+    }
+    utils:log("");
+
+    // Step 6: Check if the Python agent server is running; start it if not
+    utils:log("[STEP 6] Checking Python agent server on port " + agentServerPort.toString() + "...");
     boolean agentRunning = utils:checkAgentServerRunning(agentServerPort);
     if !agentRunning {
         utils:log("\t[INFO] Agent server not running. Starting via `uv run agent_server.py`...");
@@ -98,26 +125,27 @@ public function main() returns error? {
 
     // ── Phase 3: Prompt generation ──────────────────────────────────────────
 
-    // Step 6: Build system and user prompts
-    utils:log("[STEP 6] Building system and user prompts...");
-    string projectRoot = os:getEnv("PWD");
+    // Step 7: Build system and user prompts
+    utils:log("[STEP 7] Building system and user prompts...");
+    string|error cwdResult = file:getCurrentDir();
+    string projectRoot = cwdResult is string ? cwdResult : os:getEnv("PWD");
     string systemPrompt = prompts:buildSystemPrompt(projectRoot);
     string userMessage = prompts:buildUserMessage(userGoal, codeServerUrl, projectRoot);
 
-    // Step 7: Call Anthropic API to generate the execution prompt
-    utils:log("[STEP 7] Calling Anthropic API to generate execution prompt...");
+    // Step 8: Call Anthropic API to generate the execution prompt
+    utils:log("[STEP 8] Calling Anthropic API to generate execution prompt...");
     ai_client:LlmResult promptResult = check ai_client:callClaude(systemPrompt, userMessage, llmApiKey);
     string executionPrompt = promptResult.text;
     promptGenUsage = promptResult.usage;
 
-    // Step 8: Generate a short filename slug from the goal via LLM
-    utils:log("[STEP 8] Generating short filename slug...");
+    // Step 9: Generate a short filename slug from the goal via LLM
+    utils:log("[STEP 9] Generating short filename slug...");
     ai_client:LlmResult slugResult = check ai_client:generateGoalSlug(userGoal, llmApiKey);
     string goalSlug = slugResult.text;
     slugGenUsage = slugResult.usage;
 
-    // Step 9: Add header to the generated prompt
-    utils:log("[STEP 9] Formatting execution prompt...");
+    // Step 10: Add header to the generated prompt
+    utils:log("[STEP 10] Formatting execution prompt...");
     string header = string `# Execution Prompt
 
 <!-- ============================================================
@@ -131,26 +159,32 @@ public function main() returns error? {
 `;
     string fullPrompt = header + executionPrompt;
 
-    // Step 10: Save to file — returns the path used for the agent in Step 11
-    utils:log("[STEP 10] Saving execution prompt to " + utils:OUTPUT_DIR + "...");
+    // Step 11: Save to file — returns the path used for the agent in Step 12
+    utils:log("[STEP 11] Saving execution prompt to " + utils:OUTPUT_DIR + "...");
     string promptPath = check utils:saveExecutionPrompt(fullPrompt, goalSlug);
     utils:log("\t[INFO] Saved to: " + promptPath);
     utils:log("");
 
     // ── Phase 4: Agent execution ─────────────────────────────────────────────
 
-    // Step 11: Submit the execution prompt to the agent server and stream logs
-    utils:log("[STEP 11] Running Claude agent...");
+    // Step 12: Submit the execution prompt to the agent server and stream logs
+    utils:log("[STEP 12] Running Claude agent...");
     agent_client:AgentCost? agentCost = check agent_client:runClaudeAgent(promptPath, agentUrl);
     utils:log("");
 
     // ── Phase 5: Post-processing ──────────────────────────────────────────────
 
-    // Step 12: Close all editor tabs in code-server (deterministic cleanup, no LLM needed)
-    // utils:log("[STEP 12] Workspace cleanup — closing editor tabs in code-server...");
+    // Step 13: Close all editor tabs in code-server (deterministic cleanup, no LLM needed)
+    // utils:log("[STEP 13] Workspace cleanup — closing editor tabs in code-server...");
     // os:Process|error cleanupProc = os:exec({
     //     value: "agent/.venv/bin/python",
-    //     arguments: ["agent/cleanup_workspace.py", "--url", codeServerUrl]
+    //     arguments: [
+    //         "agent/cleanup_workspace.py",
+    //         "--url", codeServerUrl,
+    //         "--samples-repo", integrationSamplesRepo,
+    //         "--upstream", integrationSamplesUpstream,
+    //         "--base-branch", integrationSamplesBaseBranch
+    //     ]
     // });
     // if cleanupProc is error {
     //     utils:log("\t[WARN] Could not start cleanup_workspace.py: " + cleanupProc.message());
@@ -164,11 +198,11 @@ public function main() returns error? {
     // }
     // utils:log("");
 
-    // Step 13: Enforce documentation structure via a dedicated Claude API call.
+    // Step 14: Enforce documentation structure via a dedicated Claude API call.
     // The agent writes the doc with all browser-automation context in its window;
     // rules stated early in the system prompt get buried. This call has the rules
     // fresh in context with no other noise, so they are reliably applied.
-    utils:log("[STEP 13] Enforcing documentation structure...");
+    utils:log("[STEP 14] Enforcing documentation structure...");
     string workflowDocsDir = "./artifacts/workflow-docs";
     string enforcedDocPath = "";
     file:MetaData[]|file:Error dirEntries = file:readDir(workflowDocsDir);
@@ -209,31 +243,17 @@ public function main() returns error? {
     }
     utils:log("");
 
-    // Step 14: Inject "Deploy to Devant" button into the workflow doc
-    utils:log("[STEP 14] Injecting Deploy to Devant button into workflow doc...");
+    // Step 15: Inject "Deploy to Devant" button into the workflow doc
+    utils:log("[STEP 15] Injecting Deploy to Devant button into workflow doc...");
     if enforcedDocPath != "" {
-        os:Process|error devantProc = os:exec({
-            value: "agent/.venv/bin/python",
-            arguments: ["agent/inject_devant_button.py", enforcedDocPath]
-        });
-        if devantProc is error {
-            utils:log("\t[WARN] Could not start inject_devant_button.py: " + devantProc.message());
-            utils:log("\t[WARN] Run manually: agent/.venv/bin/python agent/inject_devant_button.py " + enforcedDocPath);
-        } else {
-            int devantExit = check devantProc.waitForExit();
-            if devantExit == 0 {
-                utils:log("\t[INFO] Deploy to Devant button injected successfully.");
-            } else {
-                utils:log("\t[WARN] inject_devant_button.py exited with code " + devantExit.toString() + ".");
-            }
-        }
+        utils:injectDevantButton(enforcedDocPath);
     } else {
         utils:log("\t[INFO] No enforced doc path available — skipping Devant button injection.");
     }
     utils:log("");
 
-    // Step 15: Append Ballerina Central examples link to the workflow doc (if examples exist)
-    utils:log("[STEP 15] Checking Ballerina Central for connector examples link...");
+    // Step 16: Append Ballerina Central examples link to the workflow doc (if examples exist)
+    utils:log("[STEP 16] Checking Ballerina Central for connector examples link...");
     if enforcedDocPath != "" {
         os:Process|error examplesProc = os:exec({
             value: "agent/.venv/bin/python",
@@ -254,8 +274,8 @@ public function main() returns error? {
     }
     utils:log("");
 
-    // Step 16: Crop UI chrome from screenshots produced by the agent
-    utils:log("[STEP 16] Cropping screenshots...");
+    // Step 17: Crop UI chrome from screenshots produced by the agent
+    utils:log("[STEP 17] Cropping screenshots...");
     os:Process|error cropProc = os:exec({
         value: "agent/.venv/bin/python",
         arguments: ["agent/crop_screenshots.py"]
@@ -294,8 +314,8 @@ public function main() returns error? {
     }
     decimal totalCombinedCostUsd = totalCostUsd + agentCostUsd;
 
-    // Step 17: Write run log to artifacts/run-log/
-    utils:log("[STEP 17] Writing run log...");
+    // Step 18: Write run log to artifacts/run-log/
+    utils:log("[STEP 18] Writing run log...");
     string runLogDir = "./artifacts/run-log";
     io:Error? keepErr = io:fileWriteString(runLogDir + "/.keep", "");
     if keepErr is io:Error {

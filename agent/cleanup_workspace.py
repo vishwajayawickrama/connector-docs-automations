@@ -1,4 +1,20 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).
+#
+# WSO2 LLC. licenses this file to you under the Apache License,
+# Version 2.0 (the "License"); you may not use this file except
+# in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
 """
 cleanup_workspace.py
 
@@ -45,8 +61,8 @@ PUBLISHED_SAMPLE_LOG = "artifacts/run-log/published-sample-path.txt"
 _WORKSPACE_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_SAMPLES_REPO = _WORKSPACE_ROOT / "integration-samples"
 
-UPSTREAM_REPO = "wso2/integration-samples"
-BASE_BRANCH = "main"
+DEFAULT_UPSTREAM_REPO = "wso2/integration-samples"
+DEFAULT_BASE_BRANCH = "main"
 
 
 # ── Logging helpers ───────────────────────────────────────────────────────────
@@ -113,7 +129,7 @@ def infer_fork(samples_repo: Path) -> str:
 
 # ── Step 3: Sync main + create branch ────────────────────────────────────────
 
-def sync_and_branch(samples_repo: Path, branch_name: str, dry_run: bool) -> None:
+def sync_and_branch(samples_repo: Path, branch_name: str, base_branch: str, dry_run: bool) -> None:
     remotes = run(["git", "remote"], cwd=samples_repo).split()
     if "upstream" not in remotes:
         fail(
@@ -124,22 +140,22 @@ def sync_and_branch(samples_repo: Path, branch_name: str, dry_run: bool) -> None
 
     if dry_run:
         dry(f"git fetch upstream  (in {samples_repo})")
-        dry(f"git checkout {BASE_BRANCH} && git merge upstream/{BASE_BRANCH} --ff-only")
+        dry(f"git checkout {base_branch} && git merge upstream/{base_branch} --ff-only")
         dry(f"git checkout -b {branch_name}")
         return
 
-    info(f"Fetching upstream/{BASE_BRANCH}...")
+    info(f"Fetching upstream/{base_branch}...")
     subprocess.run(["git", "fetch", "upstream"], cwd=str(samples_repo), check=True)
-    subprocess.run(["git", "checkout", BASE_BRANCH], cwd=str(samples_repo), check=True)
+    subprocess.run(["git", "checkout", base_branch], cwd=str(samples_repo), check=True)
     try:
         subprocess.run(
-            ["git", "merge", f"upstream/{BASE_BRANCH}", "--ff-only"],
+            ["git", "merge", f"upstream/{base_branch}", "--ff-only"],
             cwd=str(samples_repo),
             check=True,
         )
     except subprocess.CalledProcessError:
         fail(
-            f"Could not fast-forward fork's {BASE_BRANCH} to upstream/{BASE_BRANCH}.\n"
+            f"Could not fast-forward fork's {base_branch} to upstream/{base_branch}.\n"
             "Your fork has diverged. Resolve manually before running this script."
         )
     info(f"Creating branch: {branch_name}")
@@ -252,6 +268,8 @@ def create_pr(
     branch_name: str,
     project_name: str,
     pr_body: str,
+    upstream_repo: str,
+    base_branch: str,
     dry_run: bool,
 ) -> str:
     fork_owner = fork.split("/")[0]
@@ -259,18 +277,18 @@ def create_pr(
     head = f"{fork_owner}:{branch_name}"
 
     if dry_run:
-        dry(f"gh pr create --repo {UPSTREAM_REPO} --head {head} --base {BASE_BRANCH}")
+        dry(f"gh pr create --repo {upstream_repo} --head {head} --base {base_branch}")
         dry(f"  Title: {title}")
         return "(dry run — no PR created)"
 
-    info(f"Creating PR: {UPSTREAM_REPO} ← {head}")
+    info(f"Creating PR: {upstream_repo} ← {head}")
     try:
         result = subprocess.run(
             [
                 "gh", "pr", "create",
-                "--repo", UPSTREAM_REPO,
+                "--repo", upstream_repo,
                 "--head", head,
-                "--base", BASE_BRANCH,
+                "--base", base_branch,
                 "--title", title,
                 "--body", pr_body,
             ],
@@ -367,6 +385,21 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--upstream",
+        default=DEFAULT_UPSTREAM_REPO,
+        metavar="OWNER/REPO",
+        help=(
+            f"Upstream GitHub repo to open PRs against "
+            f"(default: {DEFAULT_UPSTREAM_REPO})"
+        ),
+    )
+    parser.add_argument(
+        "--base-branch",
+        default=DEFAULT_BASE_BRANCH,
+        metavar="BRANCH",
+        help=f"Base branch for integration samples PRs (default: {DEFAULT_BASE_BRANCH})",
+    )
+    parser.add_argument(
         "--no-publish",
         action="store_true",
         help="Skip sample publishing — just delete project and close editor tabs",
@@ -405,10 +438,10 @@ def main() -> None:
             fail(f"{samples_repo} is not a git repository.")
         fork = infer_fork(samples_repo)
         branch_name = f"samples/add-{project_name}"
-        info(f"Fork: {fork}  |  Upstream: {UPSTREAM_REPO}  |  Branch: {branch_name}")
+        info(f"Fork: {fork}  |  Upstream: {args.upstream}  |  Branch: {branch_name}")
 
         # ── 3. Sync main + create branch ──────────────────────────
-        sync_and_branch(samples_repo, branch_name, args.dry_run)
+        sync_and_branch(samples_repo, branch_name, args.base_branch, args.dry_run)
 
         # ── 4. Copy sample ────────────────────────────────────────
         copy_sample(samples_repo, project, project_name, args.dry_run)
@@ -418,7 +451,7 @@ def main() -> None:
 
         # ── 6. Create PR ──────────────────────────────────────────
         pr_body = build_pr_body(project_name)
-        pr_url = create_pr(fork, branch_name, project_name, pr_body, args.dry_run)
+        pr_url = create_pr(fork, branch_name, project_name, pr_body, args.upstream, args.base_branch, args.dry_run)
 
         # ── 7. Write run-log entry ────────────────────────────────
         write_sample_log(project_name, args.dry_run)

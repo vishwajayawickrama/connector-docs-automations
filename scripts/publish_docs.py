@@ -1,4 +1,20 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).
+#
+# WSO2 LLC. licenses this file to you under the Apache License,
+# Version 2.0 (the "License"); you may not use this file except
+# in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
 """
 publish_docs.py
 
@@ -22,8 +38,6 @@ Optional:
     --category CATEGORY     Connector category — required if not in the built-in map
     --no-preview            Skip Playwright preview screenshots
     --dry-run               Print planned actions without making any changes
-    --test                  Target the test repo (NEONDRAKEK/docs-integrator) instead of
-                            the production upstream (wso2/docs-integrator)
 
 Prerequisites:
     - gh CLI authenticated (gh auth login)
@@ -152,8 +166,6 @@ CATEGORY_MAP: dict[str, str] = {
 AVAILABLE_CATEGORIES = sorted(set(CATEGORY_MAP.values()))
 
 DEFAULT_UPSTREAM = "wso2/docs-integrator"
-TEST_UPSTREAM    = "NEONDRAKEK/docs-integrator"
-TEST_FORK        = "Team-Tensors/docs-integrator-test"
 DEFAULT_BASE_BRANCH = "dev"
 PREVIEW_PORT = 3333
 VIEWPORT_WIDTH = 1440
@@ -164,7 +176,6 @@ VIEWPORT_HEIGHT = 900
 #         <workspace>/docs-integrator/
 _WORKSPACE_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_DOCS_REPO = _WORKSPACE_ROOT / "docs-integrator"
-TEST_DOCS_REPO    = _WORKSPACE_ROOT / "docs-integrator-test"
 
 
 # ── Logging helpers ───────────────────────────────────────────────────────────
@@ -319,24 +330,9 @@ def sync_and_branch(
     docs_repo: Path,
     branch_name: str,
     dry_run: bool,
-    test_mode: bool = False,
     upstream_slug: str = DEFAULT_UPSTREAM,
 ) -> None:
-    """Fast-forward fork's dev from upstream, then create the feature branch.
-
-    In test_mode the upstream sync is skipped — the branch is created directly
-    from the current state of dev without requiring an 'upstream' git remote.
-    """
-    if test_mode:
-        if dry_run:
-            dry("git checkout dev  (skip upstream sync — test mode)")
-            dry(f"git checkout -b {branch_name}")
-            return
-        info("Test mode — skipping upstream sync, creating branch from current dev.")
-        subprocess.run(["git", "checkout", "dev"], cwd=str(docs_repo), check=True)
-        subprocess.run(["git", "checkout", "-b", branch_name], cwd=str(docs_repo), check=True)
-        return
-
+    """Fast-forward fork's base branch from upstream, then create the feature branch."""
     remotes = run(["git", "remote"], cwd=docs_repo).split()
     if "upstream" not in remotes:
         fail(
@@ -777,7 +773,7 @@ def parse_args() -> argparse.Namespace:
         "--fork",
         metavar="OWNER/REPO",
         help=(
-            "Fork repo slug, e.g. vishwajayawickrama/docs-integrator "
+            "Fork repo slug, e.g. your-org/docs-integrator "
             "(inferred from git remote 'origin' if omitted)"
         ),
     )
@@ -811,15 +807,6 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Print planned actions without making any changes",
     )
-    parser.add_argument(
-        "--test",
-        action="store_true",
-        help=(
-            f"Use test repos: fork={TEST_FORK}, upstream={TEST_UPSTREAM}. "
-            f"Expects local clone of the test fork at {TEST_DOCS_REPO}. "
-            "Overrides --upstream and --fork; skips upstream git sync."
-        ),
-    )
     return parser.parse_args()
 
 
@@ -829,18 +816,8 @@ def main() -> None:
     artifacts_dir = Path(args.artifacts_dir).resolve()
     docs_repo = Path(args.docs_repo).resolve()
 
-    if args.test:
-        upstream = TEST_UPSTREAM
-        fork = TEST_FORK
-        if args.docs_repo == str(DEFAULT_DOCS_REPO):
-            docs_repo = TEST_DOCS_REPO.resolve()
-        info(
-            f"[TEST MODE] upstream={TEST_UPSTREAM}  fork={TEST_FORK}  "
-            f"docs-repo={docs_repo}"
-        )
-    else:
-        upstream = args.upstream
-        fork = None  # resolved below after docs_repo is validated
+    upstream = args.upstream
+    fork = None  # resolved below after docs_repo is validated
     if args.dry_run:
         print("=" * 60)
         print("DRY RUN — no changes will be made")
@@ -853,8 +830,7 @@ def main() -> None:
 
     # ── 2. Validate docs repo ────────────────────────────────────
     validate_docs_repo(docs_repo)
-    if not args.test:
-        fork = args.fork or infer_fork(docs_repo)
+    fork = args.fork or infer_fork(docs_repo)
     info(f"Fork: {fork}  |  Upstream: {upstream}  |  Base branch: {args.base_branch}")
 
     # ── 3. Detect category ───────────────────────────────────────
@@ -864,7 +840,7 @@ def main() -> None:
     branch_name = f"docs/add-{connector_slug}-connector-example-documentation"
     info(f"Branch: {branch_name}")
     sync_and_branch(docs_repo, branch_name, args.dry_run,
-                    test_mode=args.test, upstream_slug=upstream)
+                    upstream_slug=upstream)
 
     # ── 5–8. Place example.md, copy screenshots, update sidebar ──
     run_claude_code_placement(

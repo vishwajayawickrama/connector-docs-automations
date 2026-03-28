@@ -1,10 +1,26 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).
+#
+# WSO2 LLC. licenses this file to you under the Apache License,
+# Version 2.0 (the "License"); you may not use this file except
+# in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
 """
 append_examples_link.py
 
 Post-processing step: fetches the Examples section from the connector's Ballerina
 Central readme (via registry API) and appends it to the workflow doc under the
-heading '## More Code Examples'.
+heading '## More code examples'.
 
 Usage: python append_examples_link.py <doc_path>
 
@@ -13,7 +29,7 @@ Strategy:
   2. Query the Ballerina Central registry API (/latest) to get package metadata.
   3. Extract the 'readme' field (markdown) from the response.
   4. Parse out the '## Examples' section from the readme.
-  5. Append the section content under '## More Code Examples' (not the original heading).
+  5. Append the section content under '## More code examples' (not the original heading).
 """
 
 import json
@@ -99,7 +115,7 @@ def main() -> None:
 
     # Idempotency: skip if already appended
     if "## More code examples" in content:
-        print("[INFO] append_examples_link: 'More Code Examples' section already present — skipping.")
+        print("[INFO] append_examples_link: 'More code examples' section already present — skipping.")
         sys.exit(0)
 
     connector_name = extract_connector_name(content)
@@ -123,7 +139,7 @@ def main() -> None:
         print(f"[INFO] append_examples_link: no Examples section found in readme for '{connector_name}' — skipping.")
         sys.exit(0)
 
-    print(f"[INFO] append_examples_link: found Examples section — appending as '## More Code Examples'.")
+    print("[INFO] append_examples_link: found Examples section — appending as '## More code examples'.")
     doc_path.write_text(content.rstrip() + "\n" + build_section(examples_body), encoding="utf-8")
     print("[INFO] append_examples_link: done.")
 

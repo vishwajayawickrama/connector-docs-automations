@@ -17,6 +17,30 @@ on:
         required: false
         default: "8765"
         type: string
+      integrationSamplesUpstream:
+        description: "GitHub repo for integration samples PRs (org/repo)"
+        required: false
+        default: "wso2/integration-samples"
+        type: string
+      integrationSamplesBaseBranch:
+        description: "Base branch for integration samples PRs"
+        required: false
+        default: "main"
+        type: string
+      docsIntegratorFork:
+        description: "Your fork of docs-integrator to push feature branches to (org/repo)"
+        required: true
+        type: string
+      docsIntegratorUpstream:
+        description: "Upstream docs-integrator repo to open PRs against (org/repo)"
+        required: false
+        default: "wso2/docs-integrator"
+        type: string
+      docsIntegratorBaseBranch:
+        description: "Base branch for docs-integrator PRs"
+        required: false
+        default: "dev"
+        type: string
 
 jobs:
   automate:
@@ -79,10 +103,19 @@ jobs:
         run: curl -fsSL https://code-server.dev/install.sh | sh
 
       # ── 8. WSO2 Integrator extension ─────────────────────────────────────────
-      # The extension is pre-release and cannot be installed from the marketplace,
-      # so we install it from the bundled .vsix file in the extensions/ directory.
-      - name: Install WSO2 Integrator extension from local .vsix
-        run: code-server --install-extension extensions/wso2.wso2-integrator-0.1.0.vsix
+      # Try to install from the marketplace first (extension ID: wso2.wso2-integrator).
+      # If that fails (pre-release / not yet published), fall back to the latest
+      # .vsix bundled in extensions/ — sorted so the highest version is picked last.
+      - name: Install WSO2 Integrator extension
+        run: |
+          if code-server --install-extension wso2.wso2-integrator; then
+            echo "Installed wso2.wso2-integrator from marketplace."
+          else
+            echo "Marketplace install failed — falling back to local .vsix"
+            LATEST_VSIX=$(ls -v extensions/wso2.wso2-integrator-*.vsix | tail -1)
+            echo "Installing $LATEST_VSIX"
+            code-server --install-extension "$LATEST_VSIX"
+          fi
 
       # ── 9. Config.toml ───────────────────────────────────────────────────────
       # Use Python to write the file so special characters in the API key or goal
@@ -93,6 +126,11 @@ jobs:
           CODE_SERVER_PORT: ${{ inputs.codeServerPort }}
           AGENT_SERVER_PORT: ${{ inputs.agentServerPort }}
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          INTEGRATION_SAMPLES_UPSTREAM: ${{ inputs.integrationSamplesUpstream }}
+          INTEGRATION_SAMPLES_BASE_BRANCH: ${{ inputs.integrationSamplesBaseBranch }}
+          DOCS_INTEGRATOR_FORK: ${{ inputs.docsIntegratorFork }}
+          DOCS_INTEGRATOR_UPSTREAM: ${{ inputs.docsIntegratorUpstream }}
+          DOCS_INTEGRATOR_BASE_BRANCH: ${{ inputs.docsIntegratorBaseBranch }}
         run: |
           python3 - << 'PYEOF'
           import os
@@ -101,16 +139,26 @@ jobs:
               """Escape backslashes and double-quotes for a TOML basic string."""
               return s.replace("\\", "\\\\").replace('"', '\\"')
 
-          api_key    = os.environ["LLM_API_KEY"]
+          api_key    = toml_escape(os.environ["LLM_API_KEY"])
           user_goal  = toml_escape(os.environ["USER_GOAL"])
           code_port  = int(os.environ["CODE_SERVER_PORT"])
           agent_port = int(os.environ["AGENT_SERVER_PORT"])
+          int_samples_upstream     = toml_escape(os.environ["INTEGRATION_SAMPLES_UPSTREAM"])
+          int_samples_base_branch  = toml_escape(os.environ["INTEGRATION_SAMPLES_BASE_BRANCH"])
+          docs_fork         = toml_escape(os.environ["DOCS_INTEGRATOR_FORK"])
+          docs_upstream     = toml_escape(os.environ["DOCS_INTEGRATOR_UPSTREAM"])
+          docs_base_branch  = toml_escape(os.environ["DOCS_INTEGRATOR_BASE_BRANCH"])
 
           config = (
               f'llmApiKey = "{api_key}"\n'
               f'userGoal = "{user_goal}"\n'
               f"codeServerPort = {code_port}\n"
               f"agentServerPort = {agent_port}\n"
+              f'integrationSamplesUpstream = "{int_samples_upstream}"\n'
+              f'integrationSamplesBaseBranch = "{int_samples_base_branch}"\n'
+              f'docsIntegratorFork = "{docs_fork}"\n'
+              f'docsIntegratorUpstream = "{docs_upstream}"\n'
+              f'docsIntegratorBaseBranch = "{docs_base_branch}"\n'
           )
 
           with open("Config.toml", "w") as f:
@@ -129,10 +177,10 @@ jobs:
         run: |
           cd agent
           unset CLAUDECODE
-          nohup .venv/bin/python agent_server.py --port 8765 &
+          nohup .venv/bin/python agent_server.py --port ${{ inputs.agentServerPort }} &
           echo "Waiting for agent server to be ready..."
           for i in $(seq 1 20); do
-            if curl -s http://localhost:8765/health > /dev/null 2>&1; then
+            if curl -s http://localhost:${{ inputs.agentServerPort }}/health > /dev/null 2>&1; then
               echo "Agent server is ready."
               exit 0
             fi

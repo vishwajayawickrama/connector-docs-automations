@@ -1,3 +1,18 @@
+// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).
+//
+// WSO2 LLC. licenses this file to you under the Apache License,
+// Version 2.0 (the "License"); you may not use this file except
+// in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied. See the License for the
+// specific language governing permissions and limitations
+// under the License.
 
 # Builds the system prompt that instructs Claude to produce an XML-tagged
 # Markdown execution prompt following the mandatory template structure.
@@ -86,6 +101,7 @@ You are also a Technical Documentation Specialist — after automation, write th
 - **If a .bal file tab opens automatically** (e.g., VS Code auto-opens it when creating an integration), **immediately close that editor tab** — click the × on the tab or use Ctrl+W — before proceeding. Do NOT read, inspect, or document its contents.
 - **If any source code window or code editor tab is open**, close it before taking any milestone screenshot. Screenshots must never show source code.
 - If a step appears to require manual code editing, **stop and request user guidance**.
+- Do **NOT** click the **Expression** toggle/button for any connection parameter field. Configurable variables can be bound directly via the helper panel without switching a field into expression mode.
 </rules_lowcode>
 
 <rules_playwright_mcp>
@@ -213,22 +229,21 @@ MANDATORY STAGE STRUCTURE — you MUST include ALL of the following stage catego
   fields from the same helper panel session. Follow these sub-steps for EACH field individually:
 
   1. Focus the specific field you want to configure (click or scroll to it).
-  2. Click the **Expression** toggle button next to THAT field to switch it to expression mode.
-  3. Click **Open Helper Panel** (the small button that appears next to the expression textbox).
-  4. In the helper panel, click the **Configurables** tab.
-  5. Click **+ New Configurable**.
-  6. In the **New Configurable** dialog:
+  2. Click **Open Helper Panel** (the small button that appears next to the field).
+  3. In the helper panel, click the **Configurables** tab.
+  4. Click **+ New Configurable**.
+  5. In the **New Configurable** dialog:
      - **Variable Name**: enter a descriptive camelCase name (e.g., ${bt}redisHost${bt}, ${bt}dbPassword${bt}, ${bt}kafkaBrokerUrl${bt}, ${bt}salesforceClientId${bt}).
      - **Variable Type**: choose the primitive type — ${bt}string${bt} for text/URLs/credentials, ${bt}int${bt} for numeric ports or counts, ${bt}boolean${bt} for flags.
      - **Default Value**: leave blank for sensitive values (passwords, API keys).
      - Click **Save**.
-  7. **CRITICAL**: After clicking Save, the new configurable is AUTOMATICALLY injected into
+  6. **CRITICAL**: After clicking Save, the new configurable is AUTOMATICALLY injected into
      the currently active field as a proper variable reference. Do NOT click the configurable
      name again in the list — it is already bound. Close the helper panel immediately.
-  8. Move to the next field and repeat from step 1.
+  7. Move to the next field and repeat from step 1.
 
-  **NEVER type a configurable name directly into an expression textbox using ${bt}browser_type${bt}.**
-  Typing text into an expression-mode field creates a Ballerina STRING LITERAL
+  **NEVER type a configurable name directly into a field using ${bt}browser_type${bt}.**
+  Typing text into a field creates a Ballerina STRING LITERAL
   (e.g., ${bt}"snowflakeAccountIdentifier"${bt}) not a variable reference. The integration will fail
   because it passes the literal text as the credential instead of the configured value.
   The ONLY correct way to bind a configurable is via the auto-inject after clicking Save in the
@@ -237,7 +252,6 @@ MANDATORY STAGE STRUCTURE — you MUST include ALL of the following stage catego
   **Recovery — if the wrong configurable was injected into a field:**
   - Open THAT field's helper panel → Configurables tab → click the CORRECT configurable name
     in the list to replace the current value with the proper variable reference.
-  - Do NOT clear the textbox and retype — that creates a string literal.
 - **MANDATORY screenshot 2**: After binding ALL required connection parameters to Configurable variables (fields show configurable variable names, not literal values), BEFORE clicking Save. Every field must be visible with its configurable reference shown. The documentation step for this screenshot MUST list each parameter as a bullet: **[paramName]** — [one-line description of what this parameter controls].
   - **CRITICAL placement rule**: Embed in the sub-step that describes filling parameters, NOT in a step about opening the form or saving.
   - **Filename**: ${bt}[goal_prefix]_screenshot_02_connection_form.png${bt}.
