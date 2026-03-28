@@ -24,10 +24,7 @@ creates a feature branch and optionally a PR, records the sample path in the
 run-log, then deletes the local project and closes VS Code editor tabs.
 
 Usage:
-    python agent/publish_sample.py --url URL [options]
-
-Required:
-    --url URL               code-server URL (e.g. http://localhost:8080)
+    python python/publish_sample.py [options]
 
 Optional:
     --samples-repo PATH     Path to local integration-samples fork (default: ../integration-samples relative to workspace)
@@ -43,27 +40,36 @@ Prerequisites:
 """
 
 import argparse
+import os
 import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
+
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 
 PROJECT_PATH_FILE = "artifacts/run-log/created-project.txt"
 PUBLISHED_SAMPLE_LOG = "artifacts/run-log/published-sample-path.txt"
 
-# Default integration-samples path: sibling of connector-docs-automations/
+# Default integration-samples path: env var, then sibling of this workspace
 # Layout: <workspace>/connector-docs-automations/python/publish_sample.py
 #         <workspace>/integration-samples/
 _WORKSPACE_ROOT = Path(__file__).resolve().parent.parent.parent
-DEFAULT_SAMPLES_REPO = _WORKSPACE_ROOT / "integration-samples"
+_env_samples_repo = os.environ.get("INTEGRATION_SAMPLES_REPO")
+DEFAULT_SAMPLES_REPO = (
+    Path(_env_samples_repo) if _env_samples_repo
+    else _WORKSPACE_ROOT / "integration-samples"
+)
 
-DEFAULT_UPSTREAM_REPO = "wso2/integration-samples"
-DEFAULT_BASE_BRANCH = "main"
+DEFAULT_CODE_SERVER_PORT = os.environ.get("CODE_SERVER_PORT", "8080")
+DEFAULT_UPSTREAM_REPO = os.environ.get("INTEGRATION_SAMPLES_UPSTREAM", "wso2/integration-samples")
+DEFAULT_BASE_BRANCH = os.environ.get("INTEGRATION_SAMPLES_BASE_BRANCH", "main")
 
 
 # ── Logging helpers ───────────────────────────────────────────────────────────
@@ -375,18 +381,21 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Examples:\n"
-            "  python agent/publish_sample.py --url http://localhost:8080\n"
-            "  python agent/publish_sample.py --url http://localhost:8080 --dry-run\n"
-            "  python agent/publish_sample.py --url http://localhost:8080 --no-pr\n"
-            "  python agent/publish_sample.py --url http://localhost:8080 --no-publish\n"
-            "  python agent/publish_sample.py --url http://localhost:8080 \\\n"
+            "  python python/publish_sample.py --url http://localhost:8080\n"
+            "  python python/publish_sample.py --url http://localhost:8080 --dry-run\n"
+            "  python python/publish_sample.py --url http://localhost:8080 --no-pr\n"
+            "  python python/publish_sample.py --url http://localhost:8080 --no-publish\n"
+            "  python python/publish_sample.py --url http://localhost:8080 \\\n"
             "      --project-path /Users/you/bi-workspace/my_connector/my_integration\n"
         ),
     )
     parser.add_argument(
         "--url",
-        required=True,
-        help="code-server URL (e.g. http://localhost:8080)",
+        default=f"http://localhost:{DEFAULT_CODE_SERVER_PORT}",
+        help=(
+            f"code-server URL (default: http://localhost:{DEFAULT_CODE_SERVER_PORT} "
+            f"from CODE_SERVER_PORT env var)"
+        ),
     )
     parser.add_argument(
         "--samples-repo",

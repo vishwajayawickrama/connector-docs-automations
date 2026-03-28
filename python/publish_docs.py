@@ -49,6 +49,7 @@ Prerequisites:
 
 import argparse
 import datetime
+import os
 import re
 import signal
 import subprocess
@@ -56,6 +57,10 @@ import sys
 import time
 import urllib.request
 from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 # ── Connector → category mapping ──────────────────────────────────────────────
 
@@ -165,17 +170,21 @@ CATEGORY_MAP: dict[str, str] = {
 
 AVAILABLE_CATEGORIES = sorted(set(CATEGORY_MAP.values()))
 
-DEFAULT_UPSTREAM = "wso2/docs-integrator"
-DEFAULT_BASE_BRANCH = "dev"
+DEFAULT_UPSTREAM = os.environ.get("DOCS_INTEGRATOR_UPSTREAM", "wso2/docs-integrator")
+DEFAULT_BASE_BRANCH = os.environ.get("DOCS_INTEGRATOR_BASE_BRANCH", "dev")
 PREVIEW_PORT = 3333
 VIEWPORT_WIDTH = 1440
 VIEWPORT_HEIGHT = 900
 
-# Default docs-integrator path: sibling directory of connector-docs-automations/
+# Default docs-integrator path: env var, then sibling of this workspace
 # Layout: <workspace>/connector-docs-automations/python/publish_docs.py
 #         <workspace>/docs-integrator/
 _WORKSPACE_ROOT = Path(__file__).resolve().parent.parent.parent
-DEFAULT_DOCS_REPO = _WORKSPACE_ROOT / "docs-integrator"
+_env_docs_repo = os.environ.get("DOCS_INTEGRATOR_REPO")
+DEFAULT_DOCS_REPO = (
+    Path(_env_docs_repo) if _env_docs_repo
+    else _WORKSPACE_ROOT / "docs-integrator"
+)
 
 
 # ── Logging helpers ───────────────────────────────────────────────────────────
@@ -771,10 +780,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--fork",
+        default=os.environ.get("DOCS_INTEGRATOR_FORK"),
         metavar="OWNER/REPO",
         help=(
             "Fork repo slug, e.g. your-org/docs-integrator "
-            "(inferred from git remote 'origin' if omitted)"
+            "(default: DOCS_INTEGRATOR_FORK env var; inferred from git remote 'origin' if unset)"
         ),
     )
     parser.add_argument(

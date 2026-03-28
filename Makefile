@@ -26,17 +26,17 @@ help:
 	@echo "    make publish-docs-no-preview  Publish docs without Playwright preview screenshots"
 	@echo "    PUBLISH_ARGS='...'            Pass extra flags, e.g. PUBLISH_ARGS='--category messaging'"
 	@echo "    DOCS_REPO=PATH                Override docs-integrator path"
-	@echo "    DOCS_UPSTREAM=OWNER/REPO      Override docs PR target repo (default: wso2/docs-integrator)"
-	@echo "    DOCS_BASE_BRANCH=BRANCH       Override docs PR base branch (default: dev)"
+	@echo "    DOCS_UPSTREAM=OWNER/REPO      Override docs PR target repo (.env: DOCS_INTEGRATOR_UPSTREAM)"
+	@echo "    DOCS_BASE_BRANCH=BRANCH       Override docs PR base branch (.env: DOCS_INTEGRATOR_BASE_BRANCH)"
 	@echo ""
 	@echo "  Cleanup"
 	@echo "    make cleanup                  Publish integration sample PR + delete local project + close tabs"
 	@echo "    make cleanup-dry              Dry run — print planned actions, no changes"
-	@echo "    CODE_SERVER_PORT=N            Override code-server port (default: 8080)"
-	@echo "    AGENT_SERVER_PORT=N           Override agent server port (default: 8765)"
-	@echo "    SAMPLES_REPO=PATH             Override integration-samples path"
-	@echo "    INTEGRATION_UPSTREAM=OWNER/REPO  Override samples PR target repo (default: wso2/integration-samples)"
-	@echo "    INTEGRATION_BASE_BRANCH=BRANCH   Override samples PR base branch (default: main)"
+	@echo "    CODE_SERVER_PORT=N            Override code-server port (.env: CODE_SERVER_PORT)"
+	@echo "    AGENT_SERVER_PORT=N           Override agent server port (.env: AGENT_SERVER_PORT)"
+	@echo "    SAMPLES_REPO=PATH             Override integration-samples path (.env: INTEGRATION_SAMPLES_REPO)"
+	@echo "    INTEGRATION_UPSTREAM=OWNER/REPO  Override samples PR target repo (.env: INTEGRATION_SAMPLES_UPSTREAM)"
+	@echo "    INTEGRATION_BASE_BRANCH=BRANCH   Override samples PR base branch (.env: INTEGRATION_SAMPLES_BASE_BRANCH)"
 	@echo "    PROJECT_PATH=PATH             Manually set project path (writes created-project.txt)"
 	@echo "    NO_PR=1                       Push branch but skip PR creation"
 	@echo "    CLEANUP_ARGS='...'            Pass extra flags, e.g. CLEANUP_ARGS='--no-publish'"
@@ -92,19 +92,21 @@ stop-agent:
 	curl -s -X POST http://localhost:$(AGENT_SERVER_PORT)/shutdown || echo "Agent server not running."
 
 # ── Publish docs ─────────────────────────────────────────────────────────────
-# DOCS_REPO          — override the docs-integrator path (optional; defaults to ../docs-integrator)
-# DOCS_UPSTREAM      — GitHub org/repo for docs-integrator PRs (default: wso2/docs-integrator)
-# DOCS_BASE_BRANCH   — base branch for docs-integrator PRs (default: dev)
+# Defaults are read from .env by publish_docs.py.
+# Set these Makefile vars to override .env values for a single run.
+# DOCS_REPO          — override the docs-integrator path
+# DOCS_UPSTREAM      — GitHub org/repo for docs-integrator PRs
+# DOCS_BASE_BRANCH   — base branch for docs-integrator PRs
 # PUBLISH_ARGS       — extra flags passed to publish_docs.py
 
 DOCS_REPO ?=
-DOCS_UPSTREAM ?= wso2/docs-integrator
-DOCS_BASE_BRANCH ?= dev
+DOCS_UPSTREAM ?=
+DOCS_BASE_BRANCH ?=
 
 _publish_docs_cmd = python/.venv/bin/python python/publish_docs.py \
   $(if $(DOCS_REPO),--docs-repo "$(DOCS_REPO)",) \
-  --upstream "$(DOCS_UPSTREAM)" \
-  --base-branch "$(DOCS_BASE_BRANCH)" \
+  $(if $(DOCS_UPSTREAM),--upstream "$(DOCS_UPSTREAM)",) \
+  $(if $(DOCS_BASE_BRANCH),--base-branch "$(DOCS_BASE_BRANCH)",) \
   $(PUBLISH_ARGS)
 
 publish-docs: python/.venv/.installed
@@ -120,26 +122,28 @@ publish-docs-no-preview: python/.venv/.installed
 	$(_publish_docs_cmd) --no-preview
 
 # ── Publish sample ────────────────────────────────────────────────────────────
-# CODE_SERVER_PORT         — code-server port (default: 8080)
-# SAMPLES_REPO             — override integration-samples path (optional)
-# INTEGRATION_UPSTREAM     — GitHub org/repo for integration samples PRs (default: wso2/integration-samples)
-# INTEGRATION_BASE_BRANCH  — base branch for integration samples PRs (default: main)
+# Defaults are read from .env by publish_sample.py.
+# Set these Makefile vars to override .env values for a single run.
+# CODE_SERVER_PORT         — override code-server port
+# SAMPLES_REPO             — override integration-samples path
+# INTEGRATION_UPSTREAM     — GitHub org/repo for integration samples PRs
+# INTEGRATION_BASE_BRANCH  — base branch for integration samples PRs
 # NO_PR                    — set to 1 to push branch without creating a PR
 # CLEANUP_ARGS             — extra flags passed to publish_sample.py
 
-CODE_SERVER_PORT ?= 8080
+CODE_SERVER_PORT ?=
 SAMPLES_REPO ?=
 PROJECT_PATH ?=
-INTEGRATION_UPSTREAM ?= wso2/integration-samples
-INTEGRATION_BASE_BRANCH ?= main
+INTEGRATION_UPSTREAM ?=
+INTEGRATION_BASE_BRANCH ?=
 NO_PR ?=
 
 _cleanup_cmd = python/.venv/bin/python python/publish_sample.py \
-  --url http://localhost:$(CODE_SERVER_PORT) \
-  --upstream "$(INTEGRATION_UPSTREAM)" \
-  --base-branch "$(INTEGRATION_BASE_BRANCH)" \
+  $(if $(CODE_SERVER_PORT),--url "http://localhost:$(CODE_SERVER_PORT)",) \
   $(if $(SAMPLES_REPO),--samples-repo "$(SAMPLES_REPO)",) \
   $(if $(PROJECT_PATH),--project-path "$(PROJECT_PATH)",) \
+  $(if $(INTEGRATION_UPSTREAM),--upstream "$(INTEGRATION_UPSTREAM)",) \
+  $(if $(INTEGRATION_BASE_BRANCH),--base-branch "$(INTEGRATION_BASE_BRANCH)",) \
   $(if $(NO_PR),--no-pr,) \
   $(CLEANUP_ARGS)
 

@@ -19,26 +19,33 @@ Goal → Claude generates execution prompt → Agent executes via Playwright MCP
 
 ## Setup
 
-**1. Create Config.toml**
+**1. Create Config.toml** (Ballerina pipeline config)
 
 ```bash
 cp Config.toml.example Config.toml
-# Fill in llmApiKey, userGoal, and repo paths
+# Fill in llmApiKey and userGoal
 ```
 
-**2. Install dependencies**
+**2. Create .env** (Python scripts config)
 
 ```bash
-make setup
+cp .env.example .env
+# Fill in DOCS_INTEGRATOR_FORK and adjust any non-default values
 ```
 
-**3. Export Anthropic API key** (required by the Python agent)
+**3. Export Anthropic API key** (required by the Python agent server)
 
 ```bash
 export ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
-**4. Run the pipeline**
+**4. Install dependencies**
+
+```bash
+make setup
+```
+
+**5. Run the pipeline**
 
 ```bash
 make run
@@ -48,23 +55,38 @@ Artifacts are saved under `artifacts/` (git-ignored).
 
 ## Configuration
 
-All settings are in `Config.toml`. Copy `Config.toml.example` to get started.
+Configuration is split between two files:
+
+### `Config.toml` — Ballerina pipeline
+
+Copy `Config.toml.example` to get started.
 
 | Key | Required | Default | Description |
 |-----|----------|---------|-------------|
-| `llmApiKey` | ✅ | — | Anthropic API key |
+| `llmApiKey` | ✅ | — | Anthropic API key for Ballerina AI calls |
 | `userGoal` | ✅ | — | The integration to document |
 | `codeServerPort` | No | `8080` | Port for the code-server instance |
 | `agentServerPort` | No | `8765` | Port for the Python agent server |
-| `integrationSamplesRepo` | No | `../integration-samples` | Local path to integration-samples fork |
-| `docsIntegratorRepo` | No | `../docs-integrator` | Local path to docs-integrator fork |
-| `integrationSamplesUpstream` | No | `wso2/integration-samples` | GitHub org/repo for samples PRs |
-| `integrationSamplesBaseBranch` | No | `main` | Base branch for samples PRs |
-| `docsIntegratorFork` | ✅ | — | Your fork of docs-integrator (org/repo) |
-| `docsIntegratorUpstream` | No | `wso2/docs-integrator` | GitHub org/repo for docs PRs |
-| `docsIntegratorBaseBranch` | No | `dev` | Base branch for docs PRs |
 
 > **Never commit `Config.toml`** — it is git-ignored.
+
+### `.env` — Python scripts
+
+Copy `.env.example` to get started. Used by `publish_docs.py`, `publish_sample.py`, `agent_server.py`, and `crop_screenshots.py`.
+
+| Key | Required | Default | Description |
+|-----|----------|---------|-------------|
+| `CODE_SERVER_PORT` | No | `8080` | code-server port |
+| `AGENT_SERVER_PORT` | No | `8765` | Agent server port |
+| `INTEGRATION_SAMPLES_REPO` | No | `../integration-samples` | Local path to integration-samples fork |
+| `DOCS_INTEGRATOR_REPO` | No | `../docs-integrator` | Local path to docs-integrator fork |
+| `INTEGRATION_SAMPLES_UPSTREAM` | No | `wso2/integration-samples` | GitHub org/repo for samples PRs |
+| `INTEGRATION_SAMPLES_BASE_BRANCH` | No | `main` | Base branch for samples PRs |
+| `DOCS_INTEGRATOR_FORK` | ✅ | — | Your fork of docs-integrator (org/repo) |
+| `DOCS_INTEGRATOR_UPSTREAM` | No | `wso2/docs-integrator` | GitHub org/repo for docs PRs |
+| `DOCS_INTEGRATOR_BASE_BRANCH` | No | `dev` | Base branch for docs PRs |
+
+> **Never commit `.env`** — it is git-ignored.
 
 ## Project Structure
 

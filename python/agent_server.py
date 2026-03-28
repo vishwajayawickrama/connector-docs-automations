@@ -39,6 +39,10 @@ import os
 import uuid
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).parent.parent / ".env")
+
 # Unset CLAUDECODE so the SDK can spawn a Claude Code subprocess even when
 # this server is launched from within an active Claude Code session.
 os.environ.pop("CLAUDECODE", None)
@@ -238,7 +242,11 @@ async def post_shutdown(request: web.Request) -> web.Response:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Claude Agent SDK HTTP server")
-    parser.add_argument("--port", type=int, default=8765, help="Port to listen on")
+    parser.add_argument(
+        "--port", type=int,
+        default=int(os.environ.get("AGENT_SERVER_PORT", 8765)),
+        help="Port to listen on (default: AGENT_SERVER_PORT env var, then 8765)",
+    )
     args = parser.parse_args()
 
     app = web.Application()
