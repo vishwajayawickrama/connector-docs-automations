@@ -26,7 +26,7 @@ Preview screenshots are uploaded as pre-release assets on the fork repo —
 they are NOT committed to the docs-integrator repository.
 
 Usage:
-    python scripts/publish_docs.py [options]
+    python python/publish_docs.py [options]
 
 Optional:
     --docs-repo PATH        Path to local clone of the docs-integrator fork
@@ -57,7 +57,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-# ── Connector → category mapping ─────────────────────────────────────────────
+# ── Connector → category mapping ──────────────────────────────────────────────
 
 CATEGORY_MAP: dict[str, str] = {
     # Database
@@ -172,7 +172,7 @@ VIEWPORT_WIDTH = 1440
 VIEWPORT_HEIGHT = 900
 
 # Default docs-integrator path: sibling directory of connector-docs-automations/
-# Layout: <workspace>/connector-docs-automations/scripts/publish_docs.py
+# Layout: <workspace>/connector-docs-automations/python/publish_docs.py
 #         <workspace>/docs-integrator/
 _WORKSPACE_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_DOCS_REPO = _WORKSPACE_ROOT / "docs-integrator"
@@ -208,7 +208,7 @@ def run(cmd: list[str], cwd: Path | None = None, check: bool = True) -> str:
     return result.stdout.strip()
 
 
-# ── Step 1: Read pipeline artifacts ──────────────────────────────────────────
+# ── Step 1: Read pipeline artifacts ───────────────────────────────────────────
 
 def find_latest_doc(artifacts_dir: Path) -> tuple[Path, str]:
     """Return path and content of the most recently modified workflow doc."""
@@ -324,7 +324,7 @@ def detect_category(connector_slug: str, category_arg: str | None) -> str:
     )
 
 
-# ── Step 4: Sync dev + create branch ─────────────────────────────────────────
+# ── Step 4: Sync dev + create branch ──────────────────────────────────────────
 
 def sync_and_branch(
     docs_repo: Path,
@@ -747,11 +747,11 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Examples:\n"
-            "  python scripts/publish_docs.py\n"
-            "  python scripts/publish_docs.py --dry-run\n"
-            "  python scripts/publish_docs.py --test --no-preview\n"
-            "  python scripts/publish_docs.py --category messaging --no-preview\n"
-            "  python scripts/publish_docs.py --docs-repo ~/repos/docs-integrator\n"
+            "  python python/publish_docs.py\n"
+            "  python python/publish_docs.py --dry-run\n"
+            "  python python/publish_docs.py --test --no-preview\n"
+            "  python python/publish_docs.py --category messaging --no-preview\n"
+            "  python python/publish_docs.py --docs-repo ~/repos/docs-integrator\n"
         ),
     )
     parser.add_argument(
@@ -819,36 +819,36 @@ def main() -> None:
     upstream = args.upstream
     fork = None  # resolved below after docs_repo is validated
     if args.dry_run:
-        print("=" * 60)
+        print("=" * 79)
         print("DRY RUN — no changes will be made")
-        print("=" * 60)
+        print("=" * 79)
 
-    # ── 1. Read artifacts ────────────────────────────────────────
+    # ── 1. Read artifacts ─────────────────────────────────────────────────────
     source_doc_path, doc_content = find_latest_doc(artifacts_dir)
     connector_name, connector_slug, operation_name = extract_connector_info(doc_content)
     screenshot_files = find_screenshots(artifacts_dir)
 
-    # ── 2. Validate docs repo ────────────────────────────────────
+    # ── 2. Validate docs repo ─────────────────────────────────────────────────
     validate_docs_repo(docs_repo)
     fork = args.fork or infer_fork(docs_repo)
     info(f"Fork: {fork}  |  Upstream: {upstream}  |  Base branch: {args.base_branch}")
 
-    # ── 3. Detect category ───────────────────────────────────────
+    # ── 3. Detect category ────────────────────────────────────────────────────
     category = detect_category(connector_slug, args.category)
 
-    # ── 4. Sync dev + create branch ──────────────────────────────
+    # ── 4. Sync dev + create branch ───────────────────────────────────────────
     branch_name = f"docs/add-{connector_slug}-connector-example-documentation"
     info(f"Branch: {branch_name}")
     sync_and_branch(docs_repo, branch_name, args.dry_run,
                     upstream_slug=upstream)
 
-    # ── 5–8. Place example.md, copy screenshots, update sidebar ──
+    # ── 5–8. Place example.md, copy screenshots, update sidebar ───────────────
     run_claude_code_placement(
         docs_repo, category, connector_slug, connector_name,
         source_doc_path, screenshot_files, args.dry_run,
     )
 
-    # ── 9. Preview screenshots (not committed to docs repo) ───────
+    # ── 9. Preview screenshots (not committed to docs repo) ───────────────────
     preview_urls: list[str] = []
     if not args.no_preview:
         preview_files = take_preview_screenshots(
@@ -859,10 +859,10 @@ def main() -> None:
                 preview_files, connector_name, connector_slug, branch_name, fork
             )
 
-    # ── 10. Commit + push ────────────────────────────────────────
+    # ── 10. Commit + push ─────────────────────────────────────────────────────
     commit_and_push(docs_repo, connector_name, branch_name, args.dry_run)
 
-    # ── 11. Create PR ────────────────────────────────────────────
+    # ── 11. Create PR ─────────────────────────────────────────────────────────
     pr_body = build_pr_body(
         connector_name, operation_name, category, connector_slug, preview_urls
     )
@@ -872,12 +872,12 @@ def main() -> None:
     )
 
     print()
-    print("=" * 60)
+    print("=" * 79)
     if args.dry_run:
         print("Dry run complete. Remove --dry-run to execute.")
     else:
         print(f"Done!  PR: {pr_url}")
-    print("=" * 60)
+    print("=" * 79)
 
 
 if __name__ == "__main__":

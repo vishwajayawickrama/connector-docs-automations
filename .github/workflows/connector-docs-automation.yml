@@ -72,7 +72,7 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          cd agent
+          cd python
           uv venv
           uv pip install -r requirements.txt
           .venv/bin/playwright install chromium --with-deps
@@ -175,7 +175,7 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.LLM_API_KEY }}
         run: |
-          cd agent
+          cd python
           unset CLAUDECODE
           nohup .venv/bin/python agent_server.py --port ${{ inputs.agentServerPort }} &
           echo "Waiting for agent server to be ready..."

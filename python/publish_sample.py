@@ -16,22 +16,22 @@
 # under the License.
 
 """
-cleanup_workspace.py
+publish_sample.py
 
-Post-pipeline script: publishes the generated Ballerina integration project as a
-connector code sample to wso2/integration-samples (via a fork), creates a feature
-branch and PR, records the sample path in the run-log, then deletes the local
-project and closes VS Code editor tabs.
+Post-pipeline script: patches the generated Ballerina project's org to "wso2",
+publishes it as a connector code sample to wso2/integration-samples (via a fork),
+creates a feature branch and optionally a PR, records the sample path in the
+run-log, then deletes the local project and closes VS Code editor tabs.
 
 Usage:
-    python agent/cleanup_workspace.py --url URL [options]
+    python agent/publish_sample.py --url URL [options]
 
 Required:
     --url URL               code-server URL (e.g. http://localhost:8080)
 
 Optional:
-    --samples-repo PATH     Path to local integration-samples fork
-                            (default: ../integration-samples relative to workspace)
+    --samples-repo PATH     Path to local integration-samples fork (default: ../integration-samples relative to workspace)
+    --no-pr                 Push the branch but skip creating a pull request
     --no-publish            Skip sample publishing — just delete project and close tabs
     --dry-run               Print planned actions without making any changes
 
@@ -43,6 +43,7 @@ Prerequisites:
 """
 
 import argparse
+import re
 import shutil
 import subprocess
 import sys
@@ -56,7 +57,7 @@ PROJECT_PATH_FILE = "artifacts/run-log/created-project.txt"
 PUBLISHED_SAMPLE_LOG = "artifacts/run-log/published-sample-path.txt"
 
 # Default integration-samples path: sibling of connector-docs-automations/
-# Layout: <workspace>/connector-docs-automations/agent/cleanup_workspace.py
+# Layout: <workspace>/connector-docs-automations/python/publish_sample.py
 #         <workspace>/integration-samples/
 _WORKSPACE_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_SAMPLES_REPO = _WORKSPACE_ROOT / "integration-samples"
@@ -94,7 +95,7 @@ def run(cmd: list[str], cwd: Path | None = None, check: bool = True) -> str:
     return result.stdout.strip()
 
 
-# ── Step 1: Read created project path ────────────────────────────────────────
+# ── Step 1: Read created project path ─────────────────────────────────────────
 
 def read_project_path() -> Path:
     path_file = Path(PROJECT_PATH_FILE)
@@ -115,7 +116,6 @@ def read_project_path() -> Path:
 def infer_fork(samples_repo: Path) -> str:
     try:
         url = run(["git", "remote", "get-url", "origin"], cwd=samples_repo)
-        import re
         m = re.search(r"[:/]([^/:]+/[^/]+?)(?:\.git)?$", url)
         if m:
             return m.group(1)
@@ -127,7 +127,7 @@ def infer_fork(samples_repo: Path) -> str:
     )
 
 
-# ── Step 3: Sync main + create branch ────────────────────────────────────────
+# ── Step 3: Sync main + create branch ─────────────────────────────────────────
 
 def sync_and_branch(samples_repo: Path, branch_name: str, base_branch: str, dry_run: bool) -> None:
     remotes = run(["git", "remote"], cwd=samples_repo).split()
@@ -162,7 +162,7 @@ def sync_and_branch(samples_repo: Path, branch_name: str, base_branch: str, dry_
     subprocess.run(["git", "checkout", "-b", branch_name], cwd=str(samples_repo), check=True)
 
 
-# ── Step 4: Copy project into connectors/ ────────────────────────────────────
+# ── Step 4: Resolve actual Ballerina project path ─────────────────────────────
 
 def find_ballerina_project(base: Path) -> Path:
     """
@@ -185,13 +185,34 @@ def find_ballerina_project(base: Path) -> Path:
     return base
 
 
+# ── Step 5: Patch org in Ballerina.toml ───────────────────────────────────────
+
+def patch_ballerina_toml(project: Path, dry_run: bool) -> None:
+    """Set org = "wso2" in the generated project's Ballerina.toml."""
+    toml_path = project / "Ballerina.toml"
+    if not toml_path.exists():
+        warn(f"Ballerina.toml not found in {project.name} — skipping org patch.")
+        return
+    content = toml_path.read_text(encoding="utf-8")
+    new_content = re.sub(r'^(org\s*=\s*)"[^"]*"', r'\1"wso2"', content, flags=re.MULTILINE)
+    if new_content == content:
+        warn("org field not found in Ballerina.toml — not patched.")
+        return
+    if dry_run:
+        dry(f"Patch {toml_path}: set org = \"wso2\"")
+        return
+    toml_path.write_text(new_content, encoding="utf-8")
+    info(f"Patched Ballerina.toml: org = \"wso2\" in {project.name}")
+
+
+# ── Step 6: Copy project into connectors/ ─────────────────────────────────────
+
 def copy_sample(
     samples_repo: Path,
-    project: Path,
+    actual_project: Path,
     project_name: str,
     dry_run: bool,
 ) -> Path:
-    actual_project = find_ballerina_project(project)
     dest = samples_repo / "connectors" / project_name
     if dry_run:
         dry(f"Copy {actual_project} → {dest}")
@@ -202,7 +223,7 @@ def copy_sample(
     return dest
 
 
-# ── Step 5: Commit and push ───────────────────────────────────────────────────
+# ── Step 7: Commit and push ───────────────────────────────────────────────────
 
 def commit_and_push(
     samples_repo: Path,
@@ -225,7 +246,7 @@ def commit_and_push(
     subprocess.run(["git", "push", "origin", branch_name], cwd=str(samples_repo), check=True)
 
 
-# ── Step 6: Create PR ─────────────────────────────────────────────────────────
+# ── Step 8: Create PR ─────────────────────────────────────────────────────────
 
 def build_pr_body(project_name: str) -> str:
     return f"""\
@@ -301,7 +322,7 @@ def create_pr(
         fail(f"Failed to create PR:\n{e.stderr.strip()}")
 
 
-# ── Step 7: Write run-log entry ───────────────────────────────────────────────
+# ── Step 9: Write run-log entry ───────────────────────────────────────────────
 
 def write_sample_log(project_name: str, dry_run: bool) -> None:
     sample_path = f"connectors/{project_name}"
@@ -314,7 +335,7 @@ def write_sample_log(project_name: str, dry_run: bool) -> None:
     info(f"Recorded sample path: {sample_path} → {PUBLISHED_SAMPLE_LOG}")
 
 
-# ── Step 8: Delete local project ─────────────────────────────────────────────
+# ── Step 10: Delete local project ─────────────────────────────────────────────
 
 def delete_project(project: Path, dry_run: bool) -> None:
     if dry_run:
@@ -324,7 +345,7 @@ def delete_project(project: Path, dry_run: bool) -> None:
     info(f"Deleted local project: {project}")
 
 
-# ── Step 9: Close editor tabs ─────────────────────────────────────────────────
+# ── Step 11: Close editor tabs ────────────────────────────────────────────────
 
 def close_editor_tabs(url: str, dry_run: bool) -> None:
     if dry_run:
@@ -354,10 +375,11 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Examples:\n"
-            "  python agent/cleanup_workspace.py --url http://localhost:8080\n"
-            "  python agent/cleanup_workspace.py --url http://localhost:8080 --dry-run\n"
-            "  python agent/cleanup_workspace.py --url http://localhost:8080 --no-publish\n"
-            "  python agent/cleanup_workspace.py --url http://localhost:8080 \\\n"
+            "  python agent/publish_sample.py --url http://localhost:8080\n"
+            "  python agent/publish_sample.py --url http://localhost:8080 --dry-run\n"
+            "  python agent/publish_sample.py --url http://localhost:8080 --no-pr\n"
+            "  python agent/publish_sample.py --url http://localhost:8080 --no-publish\n"
+            "  python agent/publish_sample.py --url http://localhost:8080 \\\n"
             "      --project-path /Users/you/bi-workspace/my_connector/my_integration\n"
         ),
     )
@@ -400,6 +422,11 @@ def parse_args() -> argparse.Namespace:
         help=f"Base branch for integration samples PRs (default: {DEFAULT_BASE_BRANCH})",
     )
     parser.add_argument(
+        "--no-pr",
+        action="store_true",
+        help="Push the branch but skip creating a pull request",
+    )
+    parser.add_argument(
         "--no-publish",
         action="store_true",
         help="Skip sample publishing — just delete project and close editor tabs",
@@ -417,66 +444,81 @@ def main() -> None:
     samples_repo = Path(args.samples_repo).resolve()
 
     if args.dry_run:
-        print("=" * 60)
+        print("=" * 79)
         print("DRY RUN — no changes will be made")
-        print("=" * 60)
+        print("=" * 79)
 
-    # ── 0. Write project path file if supplied manually ──────────
+    # ── 0. Write project path file if supplied manually ───────────────────────
     if args.project_path:
         path_file = Path(PROJECT_PATH_FILE)
         path_file.parent.mkdir(parents=True, exist_ok=True)
         path_file.write_text(args.project_path.strip(), encoding="utf-8")
         info(f"Written project path to {PROJECT_PATH_FILE}: {args.project_path.strip()}")
 
-    # ── 1. Read project path ──────────────────────────────────────
+    # ── 1. Read project path ──────────────────────────────────────────────────
     project = read_project_path()
     project_name = project.name
 
     if not args.no_publish:
-        # ── 2. Validate samples repo ──────────────────────────────
+        # ── 2. Validate samples repo ──────────────────────────────────────────
         if not (samples_repo / ".git").exists():
             fail(f"{samples_repo} is not a git repository.")
         fork = infer_fork(samples_repo)
         branch_name = f"samples/add-{project_name}"
         info(f"Fork: {fork}  |  Upstream: {args.upstream}  |  Branch: {branch_name}")
 
-        # ── 3. Sync main + create branch ──────────────────────────
+        # ── 3. Sync main + create branch ──────────────────────────────────────
         sync_and_branch(samples_repo, branch_name, args.base_branch, args.dry_run)
 
-        # ── 4. Copy sample ────────────────────────────────────────
-        copy_sample(samples_repo, project, project_name, args.dry_run)
+        # ── 4. Resolve actual Ballerina project + patch org ───────────────────
+        actual_project = find_ballerina_project(project)
+        patch_ballerina_toml(actual_project, args.dry_run)
 
-        # ── 5. Commit + push ──────────────────────────────────────
+        # ── 5. Copy sample ────────────────────────────────────────────────────
+        copy_sample(samples_repo, actual_project, project_name, args.dry_run)
+
+        # ── 6. Commit + push ──────────────────────────────────────────────────
         commit_and_push(samples_repo, project_name, branch_name, args.dry_run)
 
-        # ── 6. Create PR ──────────────────────────────────────────
-        pr_body = build_pr_body(project_name)
-        pr_url = create_pr(fork, branch_name, project_name, pr_body, args.upstream, args.base_branch, args.dry_run)
-
-        # ── 7. Write run-log entry ────────────────────────────────
-        write_sample_log(project_name, args.dry_run)
-
-        print()
-        print("=" * 60)
-        if args.dry_run:
-            print("Sample publish dry run complete.")
+        # ── 7. Create PR (unless --no-pr) ─────────────────────────────────────
+        if not args.no_pr:
+            pr_body = build_pr_body(project_name)
+            pr_url = create_pr(
+                fork, branch_name, project_name, pr_body,
+                args.upstream, args.base_branch, args.dry_run,
+            )
+            write_sample_log(project_name, args.dry_run)
+            print()
+            print("=" * 79)
+            if args.dry_run:
+                print("Sample publish dry run complete.")
+            else:
+                print(f"Sample PR: {pr_url}")
+            print("=" * 79)
         else:
-            print(f"Sample PR: {pr_url}")
-        print("=" * 60)
+            info(f"Branch '{branch_name}' pushed — PR creation skipped (--no-pr).")
+            write_sample_log(project_name, args.dry_run)
+            print()
+            print("=" * 79)
+            if args.dry_run:
+                print("Sample publish dry run complete (no PR).")
+            else:
+                print(f"Branch '{branch_name}' ready — open PR manually when ready.")
+            print("=" * 79)
 
-    # ── 8. Delete local project ───────────────────────────────────
+    # ── 8. Delete local project ───────────────────────────────────────────────
     delete_project(project, args.dry_run)
 
-    # ── 9. Close editor tabs ──────────────────────────────────────
+    # ── 9. Close editor tabs ──────────────────────────────────────────────────
     close_editor_tabs(args.url, args.dry_run)
 
     print()
-    print("=" * 60)
+    print("=" * 79)
     if args.dry_run:
         print("Dry run complete. Remove --dry-run to execute.")
     else:
         print("Workspace cleanup complete.")
-    print("=" * 60)
+    print("=" * 79)
 
 
 if __name__ == "__main__":

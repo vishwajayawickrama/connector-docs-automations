@@ -30,8 +30,8 @@ import wso2/example_doc_generator.utils;
 # Phase 1  (Steps 1–2):  Pre-flight validation — API key and Claude Code CLI.
 # Phase 2  (Steps 3–6):  Infrastructure     — code-server, extension check, and Python agent server.
 # Phase 3  (Steps 7–11): Prompt generation  — build, call Claude, format, save.
-# Phase 4  (Steps 12–14): Agent execution   — run agent, cleanup workspace, enforce doc structure.
-# Phase 5  (Steps 15–18): Post-processing   — inject Devant button, append examples link, crop screenshots, write run log.
+# Phase 4  (Steps 12–13): Agent execution   — run agent, enforce doc structure.
+# Phase 5  (Steps 14–17): Post-processing   — inject Devant button, append examples link, crop screenshots, write run log.
 #
 # + return - an error if any step fails
 public function main() returns error? {
@@ -97,11 +97,10 @@ public function main() returns error? {
     utils:log("[STEP 5] Checking WSO2 Integrator extension (wso2.wso2-integrator)...");
     boolean extInstalled = utils:checkExtensionInstalled("wso2.wso2-integrator");
     if !extInstalled {
-        utils:log("\t[INFO] Extension not found. Trying marketplace install...");
+        utils:log("\t[INFO] Extension not found. Installing...");
         string|error cwdForExt = file:getCurrentDir();
         string projectRootForExt = cwdForExt is string ? cwdForExt : os:getEnv("PWD");
         string vsixPath = projectRootForExt + "/extensions/wso2.wso2-integrator-0.2.1.vsix";
-        utils:log("\t[INFO] Fallback VSIX path: " + vsixPath);
         check utils:ensureExtensionInstalled("wso2.wso2-integrator", vsixPath);
         utils:log("\t[INFO] Extension installed successfully.");
     } else {
@@ -174,35 +173,11 @@ public function main() returns error? {
 
     // ── Phase 5: Post-processing ──────────────────────────────────────────────
 
-    // Step 13: Close all editor tabs in code-server (deterministic cleanup, no LLM needed)
-    // utils:log("[STEP 13] Workspace cleanup — closing editor tabs in code-server...");
-    // os:Process|error cleanupProc = os:exec({
-    //     value: "agent/.venv/bin/python",
-    //     arguments: [
-    //         "agent/cleanup_workspace.py",
-    //         "--url", codeServerUrl,
-    //         "--samples-repo", integrationSamplesRepo,
-    //         "--upstream", integrationSamplesUpstream,
-    //         "--base-branch", integrationSamplesBaseBranch
-    //     ]
-    // });
-    // if cleanupProc is error {
-    //     utils:log("\t[WARN] Could not start cleanup_workspace.py: " + cleanupProc.message());
-    // } else {
-    //     int cleanupExit = check cleanupProc.waitForExit();
-    //     if cleanupExit == 0 {
-    //         utils:log("\t[INFO] Workspace cleanup complete.");
-    //     } else {
-    //         utils:log("\t[WARN] cleanup_workspace.py exited with code " + cleanupExit.toString() + ".");
-    //     }
-    // }
-    // utils:log("");
-
-    // Step 14: Enforce documentation structure via a dedicated Claude API call.
+    // Step 13: Enforce documentation structure via a dedicated Claude API call.
     // The agent writes the doc with all browser-automation context in its window;
     // rules stated early in the system prompt get buried. This call has the rules
     // fresh in context with no other noise, so they are reliably applied.
-    utils:log("[STEP 14] Enforcing documentation structure...");
+    utils:log("[STEP 13] Enforcing documentation structure...");
     string workflowDocsDir = "./artifacts/workflow-docs";
     string enforcedDocPath = "";
     file:MetaData[]|file:Error dirEntries = file:readDir(workflowDocsDir);
@@ -243,8 +218,8 @@ public function main() returns error? {
     }
     utils:log("");
 
-    // Step 15: Inject "Deploy to Devant" button into the workflow doc
-    utils:log("[STEP 15] Injecting Deploy to Devant button into workflow doc...");
+    // Step 14: Inject "Deploy to Devant" button into the workflow doc
+    utils:log("[STEP 14] Injecting Deploy to Devant button into workflow doc...");
     if enforcedDocPath != "" {
         utils:injectDevantButton(enforcedDocPath);
     } else {
@@ -252,8 +227,8 @@ public function main() returns error? {
     }
     utils:log("");
 
-    // Step 16: Append Ballerina Central examples link to the workflow doc (if examples exist)
-    utils:log("[STEP 16] Checking Ballerina Central for connector examples link...");
+    // Step 15: Append Ballerina Central examples link to the workflow doc (if examples exist)
+    utils:log("[STEP 15] Checking Ballerina Central for connector examples link...");
     if enforcedDocPath != "" {
         utils:appendExamplesSection(enforcedDocPath);
     } else {
@@ -261,11 +236,11 @@ public function main() returns error? {
     }
     utils:log("");
 
-    // Step 17: Crop UI chrome from screenshots produced by the agent
-    utils:log("[STEP 17] Cropping screenshots...");
+    // Step 16: Crop UI chrome from screenshots produced by the agent
+    utils:log("[STEP 16] Cropping screenshots...");
     os:Process|error cropProc = os:exec({
-        value: "agent/.venv/bin/python",
-        arguments: ["agent/crop_screenshots.py"]
+        value: "python/.venv/bin/python",
+        arguments: ["python/crop_screenshots.py"]
     });
     if cropProc is error {
         utils:log("\t[WARN] Could not launch crop_screenshots.py: " + cropProc.message());
@@ -301,8 +276,8 @@ public function main() returns error? {
     }
     decimal totalCombinedCostUsd = totalCostUsd + agentCostUsd;
 
-    // Step 18: Write run log to artifacts/run-log/
-    utils:log("[STEP 18] Writing run log...");
+    // Step 17: Write run log to artifacts/run-log/
+    utils:log("[STEP 17] Writing run log...");
     utils:writeRunLog({
         goal:                userGoal,
         goalSlug:            goalSlug,

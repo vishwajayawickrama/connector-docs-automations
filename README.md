@@ -85,15 +85,12 @@ example-doc-generator/
 │   │   └── doc_enforcement_prompt.bal  # Doc structure enforcement prompt
 │   └── utils/                      # Logger, file I/O, code-server & agent server utils
 │
-├── agent/
+├── python/
 │   ├── agent_server.py             # aiohttp server wrapping Claude Agent SDK
 │   ├── crop_screenshots.py         # Crops UI chrome from screenshots
-│   ├── append_examples_link.py     # Appends Ballerina Central examples link
-│   ├── cleanup_workspace.py        # Publishes sample PR + cleans workspace
+│   ├── publish_sample.py           # Publishes integration sample PR + cleans workspace
+│   ├── publish_docs.py             # Publishes docs to docs-integrator fork + creates PR
 │   └── requirements.txt
-│
-├── scripts/
-│   └── publish_docs.py             # Publishes docs to docs-integrator fork + creates PR
 │
 ├── .mcp.json                       # Playwright MCP config for Claude Code subagent
 ├── .claude/settings.json           # Permissions + model for Claude Code subagent
@@ -110,7 +107,7 @@ example-doc-generator/
 ```
 Setup
   make setup                Install all deps (Python venv + Playwright + Ballerina build)
-  make setup-python         Create agent/.venv and install Python deps
+  make setup-python         Create python/.venv and install Python deps
   make setup-bal            Build the Ballerina project
 
 Run
@@ -129,7 +126,7 @@ Screenshots
   make crop-screenshots-dry Preview what would be cropped (no changes)
 
 Artifacts
-  make clean                Remove artifacts/, target/, Dependencies.toml, agent/.venv
+  make clean                Remove artifacts/, target/, Dependencies.toml, python/.venv
   make clean-artifacts      Remove only the artifacts/ directory
 ```
 
@@ -147,7 +144,7 @@ Run `make help` for the full list with configurable variables.
 
 ## Python Agent Server
 
-`agent/agent_server.py` wraps the Claude Agent SDK as a lightweight HTTP server.
+`python/agent_server.py` wraps the Claude Agent SDK as a lightweight HTTP server.
 
 | Method | Path | Description |
 |--------|------|-------------|

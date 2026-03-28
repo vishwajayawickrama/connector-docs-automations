@@ -108,6 +108,7 @@ public function checkExtensionInstalled(string extensionId) returns boolean {
 # + return - an error if both install attempts fail
 public function ensureExtensionInstalled(string extensionId, string vsixFallbackPath) returns error? {
     // Attempt 1: marketplace install
+    log("\t[INFO] Trying marketplace install for: " + extensionId);
     os:Process|error marketProc = os:exec({
         value: "code-server",
         arguments: ["--install-extension", extensionId]
@@ -118,6 +119,7 @@ public function ensureExtensionInstalled(string extensionId, string vsixFallback
             return;
         }
     }
+    log("\t[WARN] Marketplace install failed — trying local VSIX: " + vsixFallbackPath);
 
     // Attempt 2: fallback to local .vsix
     os:Process|error vsixProc = os:exec({
