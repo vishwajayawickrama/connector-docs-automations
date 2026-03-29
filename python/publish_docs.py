@@ -60,6 +60,9 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
+# Path to the connector name file written by the Ballerina pipeline at startup
+CONNECTOR_NAME_FILE = Path("artifacts/run-log/connector-name.txt")
+
 # ── Connector → category mapping ──────────────────────────────────────────────
 
 CATEGORY_MAP: dict[str, str] = {
@@ -234,16 +237,40 @@ def extract_connector_info(content: str) -> tuple[str, str, str]:
     """
     Extract connector display name, slug, and primary operation name from the doc.
     Returns (display_name, slug, operation_name).
+
+    Priority for slug: connector-name.txt written by Ballerina pipeline (authoritative).
+    Priority for display_name: H1 title → "## Adding the X connector" heading → title-case slug.
     """
-    # H1: "# MySQL Connector Example"
+    # Priority 1: slug from connector-name.txt (authoritative)
+    slug_from_file: str | None = None
+    if CONNECTOR_NAME_FILE.exists():
+        raw = CONNECTOR_NAME_FILE.read_text(encoding="utf-8").strip()
+        if raw:
+            slug_from_file = re.sub(r"[^a-z0-9]+", "-", raw.lower()).strip("-")
+            info(f"Connector slug from file: {slug_from_file}")
+
+    # display_name: parse from doc (H1 → H2 heading → title-case slug)
     m = re.match(r"^#\s+(.+?)\s+Connector\s+Example", content.strip(), re.IGNORECASE)
-    if not m:
-        fail(
-            "Could not parse connector name from the H1 title.\n"
-            "Expected format: '# [ConnectorName] Connector Example'"
+    if m:
+        display_name = m.group(1).strip()
+    else:
+        m2 = re.search(
+            r"^##\s+Adding the\s+(.+?)\s+connector\b",
+            content,
+            re.MULTILINE | re.IGNORECASE,
         )
-    display_name = m.group(1).strip()
-    slug = re.sub(r"[^a-z0-9]+", "-", display_name.lower()).strip("-")
+        if m2:
+            display_name = m2.group(1).strip()
+        elif slug_from_file:
+            display_name = slug_from_file.replace("-", " ").title()
+        else:
+            fail(
+                "Could not determine connector display name from file, H1 title, or headings.\n"
+                "Ensure connector-name.txt exists in artifacts/run-log/ or the doc contains\n"
+                "'# [ConnectorName] Connector Example' or '## Adding the [ConnectorName] connector'."
+            )
+
+    slug = slug_from_file or re.sub(r"[^a-z0-9]+", "-", display_name.lower()).strip("-")
 
     # Last "## Configuring the X Y Operation" heading
     ops = re.findall(

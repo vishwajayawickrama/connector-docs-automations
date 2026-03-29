@@ -47,10 +47,10 @@ public type AgentRunCost record {
 
 # All data needed to write a pipeline run log entry.
 public type RunLogEntry record {
-    # The user-provided goal that was automated
-    string goal;
-    # Filename-safe slug derived from the goal
-    string goalSlug;
+    # The connector name (exact Ballerina Central package name)
+    string connectorName;
+    # Filename-safe slug derived from the connector name
+    string connectorSlug;
     # Pipeline start time
     time:Utc startTime;
     # Pipeline end time
@@ -59,8 +59,6 @@ public type RunLogEntry record {
     decimal durationSecs;
     # Token usage for the execution prompt generation call
     LlmCallUsage promptGenUsage;
-    # Token usage for the goal slug generation call
-    LlmCallUsage slugGenUsage;
     # Token usage for the doc enforcement call
     LlmCallUsage docEnfUsage;
     # Token usage and cost from the agent SDK run (nil if agent did not run)
@@ -88,7 +86,7 @@ public function writeRunLog(RunLogEntry entry) {
 
     string timestamp = time:utcToString(entry.startTime);
     string tsSlug = re `[:\.]`.replaceAll(timestamp, "-");
-    string logPath = RUN_LOG_DIR + "/" + entry.goalSlug + "_" + tsSlug + ".json";
+    string logPath = RUN_LOG_DIR + "/" + entry.connectorSlug + "_" + tsSlug + ".json";
 
     AgentRunCost? ac = entry.agentCost;
     json agentCostJson = ac is AgentRunCost ? {
@@ -101,8 +99,8 @@ public function writeRunLog(RunLogEntry entry) {
     } : "not available";
 
     json logJson = {
-        "goal":             entry.goal,
-        "goalSlug":         entry.goalSlug,
+        "connectorName":    entry.connectorName,
+        "connectorSlug":    entry.connectorSlug,
         "model":            "claude-sonnet-4-6",
         "startTime":        timestamp,
         "endTime":          time:utcToString(entry.endTime),
@@ -112,11 +110,6 @@ public function writeRunLog(RunLogEntry entry) {
                 "inputTokens":  entry.promptGenUsage.inputTokens,
                 "outputTokens": entry.promptGenUsage.outputTokens,
                 "costUsd":      entry.promptGenUsage.costUsd
-            },
-            "slugGeneration": {
-                "inputTokens":  entry.slugGenUsage.inputTokens,
-                "outputTokens": entry.slugGenUsage.outputTokens,
-                "costUsd":      entry.slugGenUsage.costUsd
             },
             "docEnforcement": {
                 "inputTokens":  entry.docEnfUsage.inputTokens,

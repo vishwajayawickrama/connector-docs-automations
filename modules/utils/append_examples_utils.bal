@@ -101,9 +101,20 @@ public function appendExamplesSection(string docPath) {
         return;
     }
 
-    string? connectorName = extractConnectorName(content);
+    // Priority 1: connector-name.txt written by pipeline at startup
+    string? connectorName = ();
+    string|io:Error savedName = io:fileReadString("./artifacts/run-log/connector-name.txt");
+    if savedName is string && savedName.trim().length() > 0 {
+        string nameFromFile = savedName.trim().toLowerAscii();
+        log("\t[INFO] appendExamplesSection: connector name from file: '" + nameFromFile + "'");
+        connectorName = nameFromFile;
+    } else {
+        // Fallback: extract from doc headings
+        connectorName = extractConnectorName(content);
+    }
+
     if connectorName is () {
-        log("\t[WARN] appendExamplesSection: could not extract connector name from doc title — skipping.");
+        log("\t[WARN] appendExamplesSection: could not determine connector name — skipping.");
         return;
     }
 
