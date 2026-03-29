@@ -1,25 +1,37 @@
+// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).
+//
+// WSO2 LLC. licenses this file to you under the Apache License,
+// Version 2.0 (the "License"); you may not use this file except
+// in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied. See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
 import ballerina/file;
 import ballerina/io;
 import ballerina/os;
 import ballerina/time;
 
-import ballerinaconnectors/documentation_automation_workflow.agent_client;
-import ballerinaconnectors/documentation_automation_workflow.ai_client;
-import ballerinaconnectors/documentation_automation_workflow.prompts;
-import ballerinaconnectors/documentation_automation_workflow.utils;
+import wso2/example_doc_generator.agent_client;
+import wso2/example_doc_generator.ai_client;
+import wso2/example_doc_generator.prompts;
+import wso2/example_doc_generator.utils;
 
-// Configuration
-configurable string llmApiKey = ?;
-configurable string userGoal = ?;
-configurable int codeServerPort = 8080;
-configurable int agentServerPort = 8765;
 
 # Entry point for the full automation pipeline.
 #
 # Phase 1  (Steps 1–2):  Pre-flight validation — API key and Claude Code CLI.
-# Phase 2  (Steps 3–5):  Infrastructure     — code-server and Python agent server.
-# Phase 3  (Steps 6–10): Prompt generation  — build, call Claude, format, save.
-# Phase 4  (Steps 11–16): Agent execution  — run agent, cleanup workspace, enforce doc, append examples link, crop screenshots, write run log.
+# Phase 2  (Steps 3–6):  Infrastructure     — code-server, extension check, and Python agent server.
+# Phase 3  (Steps 7–10): Prompt generation  — build, call Claude, format, save.
+# Phase 4  (Steps 11–12): Agent execution   — run agent, enforce doc structure.
+# Phase 5  (Steps 13–16): Post-processing   — inject Devant button, append examples link, crop screenshots, write run log.
 #
 # + return - an error if any step fails
 public function main() returns error? {
@@ -28,12 +40,11 @@ public function main() returns error? {
 
     time:Utc startTime = time:utcNow();
     utils:log("[INFO] Start time: " + time:utcToString(startTime));
-    utils:log("[INFO] Goal: " + userGoal);
+    utils:log("[INFO] Connector: " + connectorName);
     utils:log("");
 
     // Track LLM usage across all direct API calls (agent cost is tracked separately)
     ai_client:LlmUsage promptGenUsage    = {inputTokens: 0, outputTokens: 0, costUsd: 0.0d};
-    ai_client:LlmUsage slugGenUsage      = {inputTokens: 0, outputTokens: 0, costUsd: 0.0d};
     ai_client:LlmUsage docEnfUsage       = {inputTokens: 0, outputTokens: 0, costUsd: 0.0d};
 
     // ── Phase 1: Pre-flight validation ─────────────────────────────────────
@@ -81,8 +92,23 @@ public function main() returns error? {
     utils:log("\t[INFO] Code-server URL: " + codeServerUrl);
     utils:log("");
 
-    // Step 5: Check if the Python agent server is running; start it if not
-    utils:log("[STEP 5] Checking Python agent server on port " + agentServerPort.toString() + "...");
+    // Step 5: Ensure the WSO2 Integrator extension is installed in code-server
+    utils:log("[STEP 5] Checking WSO2 Integrator extension (wso2.wso2-integrator)...");
+    boolean extInstalled = utils:checkExtensionInstalled("wso2.wso2-integrator");
+    if !extInstalled {
+        utils:log("\t[INFO] Extension not found. Installing...");
+        string|error cwdForExt = file:getCurrentDir();
+        string projectRootForExt = cwdForExt is string ? cwdForExt : os:getEnv("PWD");
+        string vsixPath = projectRootForExt + "/extensions/wso2.wso2-integrator-0.2.1.vsix";
+        check utils:ensureExtensionInstalled("wso2.wso2-integrator", vsixPath);
+        utils:log("\t[INFO] Extension installed successfully.");
+    } else {
+        utils:log("\t[INFO] WSO2 Integrator extension is already installed.");
+    }
+    utils:log("");
+
+    // Step 6: Check if the Python agent server is running; start it if not
+    utils:log("[STEP 6] Checking Python agent server on port " + agentServerPort.toString() + "...");
     boolean agentRunning = utils:checkAgentServerRunning(agentServerPort);
     if !agentRunning {
         utils:log("\t[INFO] Agent server not running. Starting via `uv run agent_server.py`...");
@@ -97,23 +123,38 @@ public function main() returns error? {
 
     // ── Phase 3: Prompt generation ──────────────────────────────────────────
 
-    // Step 6: Build system and user prompts
-    utils:log("[STEP 6] Building system and user prompts...");
-    string projectRoot = os:getEnv("PWD");
-    string systemPrompt = prompts:buildSystemPrompt();
-    string userMessage = prompts:buildUserMessage(userGoal, codeServerUrl, projectRoot);
+    // Derive connector slug from connector name — no LLM call needed
+    string connectorSlug = connectorName.trim().toLowerAscii();
+    connectorSlug = re `\s+`.replaceAll(connectorSlug, "-");
+    connectorSlug = re `[^a-z0-9\-]`.replaceAll(connectorSlug, "");
+    string goalSlug = connectorSlug + "-connector-example";
+    utils:log("[INFO] Connector slug: " + goalSlug);
 
-    // Step 7: Call Anthropic API to generate the execution prompt
-    utils:log("[STEP 7] Calling Anthropic API to generate execution prompt...");
+    // Write connector name to artifacts/run-log/ for downstream steps
+    string runLogDir = "./artifacts/run-log";
+    file:Error? cnDirErr = file:createDir(runLogDir, file:RECURSIVE);
+    if cnDirErr is () {
+        io:Error? cnWriteErr = io:fileWriteString(runLogDir + "/connector-name.txt", connectorName.trim());
+        if cnWriteErr is io:Error {
+            utils:log("\t[WARN] Could not write connector-name.txt: " + cnWriteErr.message());
+        } else {
+            utils:log("\t[INFO] Connector name saved to " + runLogDir + "/connector-name.txt");
+        }
+    }
+    utils:log("");
+
+    // Step 7: Build system and user prompts
+    utils:log("[STEP 7] Building system and user prompts...");
+    string|error cwdResult = file:getCurrentDir();
+    string projectRoot = cwdResult is string ? cwdResult : os:getEnv("PWD");
+    string systemPrompt = prompts:buildSystemPrompt(projectRoot);
+    string userMessage = prompts:buildUserMessage(connectorName, codeServerUrl, projectRoot);
+
+    // Step 8: Call Anthropic API to generate the execution prompt
+    utils:log("[STEP 8] Calling Anthropic API to generate execution prompt...");
     ai_client:LlmResult promptResult = check ai_client:callClaude(systemPrompt, userMessage, llmApiKey);
     string executionPrompt = promptResult.text;
     promptGenUsage = promptResult.usage;
-
-    // Step 8: Generate a short filename slug from the goal via LLM
-    utils:log("[STEP 8] Generating short filename slug...");
-    ai_client:LlmResult slugResult = check ai_client:generateGoalSlug(userGoal, llmApiKey);
-    string goalSlug = slugResult.text;
-    slugGenUsage = slugResult.usage;
 
     // Step 9: Add header to the generated prompt
     utils:log("[STEP 9] Formatting execution prompt...");
@@ -124,7 +165,7 @@ public function main() returns error? {
      Generated by: WSO2 Integrator Documentation Pipeline
      Agent: Playwright MCP (Browser Automation)
      Target: Code-Server — WSO2 Integrator (Low-Code)
-     Goal: ${userGoal}
+     Connector: ${connectorName}
      ============================================================ -->
 
 `;
@@ -136,34 +177,16 @@ public function main() returns error? {
     utils:log("\t[INFO] Saved to: " + promptPath);
     utils:log("");
 
-    // ── Phase 4: Agent execution ────────────────────────────────────────────
+    // ── Phase 4: Agent execution ─────────────────────────────────────────────
 
     // Step 11: Submit the execution prompt to the agent server and stream logs
     utils:log("[STEP 11] Running Claude agent...");
     agent_client:AgentCost? agentCost = check agent_client:runClaudeAgent(promptPath, agentUrl);
     utils:log("");
 
-    // ── Phase 4 (cont.): Post-processing ────────────────────────────────────
+    // ── Phase 5: Post-processing ──────────────────────────────────────────────
 
-    // Step 12: Close all editor tabs in code-server (deterministic cleanup, no LLM needed)
-    utils:log("[STEP 12] Workspace cleanup — closing editor tabs in code-server...");
-    os:Process|error cleanupProc = os:exec({
-        value: "agent/.venv/bin/python",
-        arguments: ["agent/cleanup_workspace.py", "--url", codeServerUrl]
-    });
-    if cleanupProc is error {
-        utils:log("\t[WARN] Could not start cleanup_workspace.py: " + cleanupProc.message());
-    } else {
-        int cleanupExit = check cleanupProc.waitForExit();
-        if cleanupExit == 0 {
-            utils:log("\t[INFO] Workspace cleanup complete.");
-        } else {
-            utils:log("\t[WARN] cleanup_workspace.py exited with code " + cleanupExit.toString() + ".");
-        }
-    }
-    utils:log("");
-
-    // Step 13: Enforce documentation structure via a dedicated Claude API call.
+    // Step 12: Enforce documentation structure via a dedicated Claude API call.
     // The agent writes the doc with all browser-automation context in its window;
     // rules stated early in the system prompt get buried. This call has the rules
     // fresh in context with no other noise, so they are reliably applied.
@@ -208,23 +231,19 @@ public function main() returns error? {
     }
     utils:log("");
 
+    // Step 13: Inject "Deploy to Devant" button into the workflow doc
+    utils:log("[STEP 13] Injecting Deploy to Devant button into workflow doc...");
+    if enforcedDocPath != "" {
+        utils:injectDevantButton(enforcedDocPath);
+    } else {
+        utils:log("\t[INFO] No enforced doc path available — skipping Devant button injection.");
+    }
+    utils:log("");
+
     // Step 14: Append Ballerina Central examples link to the workflow doc (if examples exist)
     utils:log("[STEP 14] Checking Ballerina Central for connector examples link...");
     if enforcedDocPath != "" {
-        os:Process|error examplesProc = os:exec({
-            value: "agent/.venv/bin/python",
-            arguments: ["agent/append_examples_link.py", enforcedDocPath]
-        });
-        if examplesProc is error {
-            utils:log("\t[WARN] Could not start append_examples_link.py: " + examplesProc.message());
-        } else {
-            int examplesExit = check examplesProc.waitForExit();
-            if examplesExit == 0 {
-                utils:log("\t[INFO] Examples link step complete.");
-            } else {
-                utils:log("\t[WARN] append_examples_link.py exited with code " + examplesExit.toString() + ".");
-            }
-        }
+        utils:appendExamplesSection(enforcedDocPath);
     } else {
         utils:log("\t[INFO] No enforced doc path available — skipping examples link.");
     }
@@ -233,8 +252,8 @@ public function main() returns error? {
     // Step 15: Crop UI chrome from screenshots produced by the agent
     utils:log("[STEP 15] Cropping screenshots...");
     os:Process|error cropProc = os:exec({
-        value: "agent/.venv/bin/python",
-        arguments: ["agent/crop_screenshots.py"]
+        value: "python/.venv/bin/python",
+        arguments: ["python/crop_screenshots.py"]
     });
     if cropProc is error {
         utils:log("\t[WARN] Could not launch crop_screenshots.py: " + cropProc.message());
@@ -250,15 +269,15 @@ public function main() returns error? {
     }
     utils:log("");
 
-    // ── Finalise ────────────────────────────────────────────────────────────
+    // ── Phase 5 (cont.): Finalise ─────────────────────────────────────────────
 
     time:Utc endTime = time:utcNow();
     decimal durationSecs = time:utcDiffSeconds(endTime, startTime);
 
     // Aggregate direct API call costs
-    int totalInputTokens  = promptGenUsage.inputTokens  + slugGenUsage.inputTokens  + docEnfUsage.inputTokens;
-    int totalOutputTokens = promptGenUsage.outputTokens + slugGenUsage.outputTokens + docEnfUsage.outputTokens;
-    decimal totalCostUsd  = promptGenUsage.costUsd      + slugGenUsage.costUsd      + docEnfUsage.costUsd;
+    int totalInputTokens  = promptGenUsage.inputTokens  + docEnfUsage.inputTokens;
+    int totalOutputTokens = promptGenUsage.outputTokens + docEnfUsage.outputTokens;
+    decimal totalCostUsd  = promptGenUsage.costUsd      + docEnfUsage.costUsd;
 
     // Add agent SDK cost to combined total
     decimal agentCostUsd = 0.0d;
@@ -272,64 +291,20 @@ public function main() returns error? {
 
     // Step 16: Write run log to artifacts/run-log/
     utils:log("[STEP 16] Writing run log...");
-    string runLogDir = "./artifacts/run-log";
-    io:Error? keepErr = io:fileWriteString(runLogDir + "/.keep", "");
-    if keepErr is io:Error {
-        utils:log("\t[WARN] Could not create run-log dir: " + keepErr.message());
-    }
-    string timestamp = time:utcToString(startTime);
-    // Build a filename-safe timestamp (replace : and . with -)
-    string tsSlug = re `[:\.]`.replaceAll(timestamp, "-");
-    string logPath = runLogDir + "/" + goalSlug + "_" + tsSlug + ".json";
-
-    json agentCostJson = agentCost is agent_client:AgentCost ? {
-        "totalCostUsd":    agentCost.totalCostUsd,
-        "inputTokens":     agentCost.inputTokens,
-        "outputTokens":    agentCost.outputTokens,
-        "cacheReadTokens": agentCost.cacheReadTokens,
-        "cacheWriteTokens":agentCost.cacheWriteTokens,
-        "numTurns":        agentCost.numTurns
-    } : "not available";
-
-    json logJson = {
-        "goal": userGoal,
-        "goalSlug": goalSlug,
-        "model": "claude-sonnet-4-6",
-        "startTime": timestamp,
-        "endTime": time:utcToString(endTime),
-        "durationSeconds": durationSecs,
-        "llmCalls": {
-            "promptGeneration": {
-                "inputTokens": promptGenUsage.inputTokens,
-                "outputTokens": promptGenUsage.outputTokens,
-                "costUsd": promptGenUsage.costUsd
-            },
-            "slugGeneration": {
-                "inputTokens": slugGenUsage.inputTokens,
-                "outputTokens": slugGenUsage.outputTokens,
-                "costUsd": slugGenUsage.costUsd
-            },
-            "docEnforcement": {
-                "inputTokens": docEnfUsage.inputTokens,
-                "outputTokens": docEnfUsage.outputTokens,
-                "costUsd": docEnfUsage.costUsd
-            },
-            "agentExecution": agentCostJson
-        },
-        "totalDirectApiCostUsd": totalCostUsd,
-        "totalCombinedCostUsd": totalCombinedCostUsd,
-        "artifacts": {
-            "executionPromptPath": promptPath,
-            "workflowDocPath": enforcedDocPath == "" ? "(not written)" : enforcedDocPath
-        }
-    };
-
-    io:Error? logWriteErr = io:fileWriteString(logPath, logJson.toJsonString());
-    if logWriteErr is io:Error {
-        utils:log("\t[WARN] Could not write run log: " + logWriteErr.message());
-    } else {
-        utils:log("\t[INFO] Run log saved to: " + logPath);
-    }
+    utils:writeRunLog({
+        connectorName:       connectorName,
+        connectorSlug:       goalSlug,
+        startTime:           startTime,
+        endTime:             endTime,
+        durationSecs:        durationSecs,
+        promptGenUsage:      promptGenUsage,
+        docEnfUsage:         docEnfUsage,
+        agentCost:           agentCost,
+        totalDirectCostUsd:  totalCostUsd,
+        totalCombinedCostUsd: totalCombinedCostUsd,
+        promptPath:          promptPath,
+        workflowDocPath:     enforcedDocPath == "" ? "(not written)" : enforcedDocPath
+    });
     utils:log("");
 
     // Print pipeline stats
@@ -340,7 +315,6 @@ public function main() returns error? {
     utils:log(string `Prompt length:   ${fullPrompt.length()} chars`);
     utils:log("--- LLM Cost Breakdown ---");
     utils:log(string `Prompt gen:      ${promptGenUsage.inputTokens} in / ${promptGenUsage.outputTokens} out  |  $${promptGenUsage.costUsd}`);
-    utils:log(string `Slug gen:        ${slugGenUsage.inputTokens} in / ${slugGenUsage.outputTokens} out  |  $${slugGenUsage.costUsd}`);
     utils:log(string `Doc enforcement: ${docEnfUsage.inputTokens} in / ${docEnfUsage.outputTokens} out  |  $${docEnfUsage.costUsd}`);
     utils:log(string `Direct API total:${totalInputTokens} in / ${totalOutputTokens} out  |  $${totalCostUsd}`);
     utils:log(string `Agent SDK:       $${agentCostUsd}`);

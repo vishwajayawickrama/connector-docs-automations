@@ -13,10 +13,11 @@ llmApiKey = ""
 # Start manually with: code-server --auth none --bind-addr 0.0.0.0:8080
 codeServerPort = 8080
 
-# Python agent server port (agent/agent_server.py listens on this port)
+# Python agent server port (python/agent_server.py listens on this port)
 # The pipeline will start the agent server automatically if not running.
 # Start manually with: make start-agent
 agentServerPort = 8765
 
-# User Goal — the task to generate an execution prompt for
-userGoal = ""
+# Connector name — exact Ballerina Central package name (lowercase).
+# Examples: "mysql", "googlesheets", "kafka", "salesforce", "redis"
+connectorName = ""

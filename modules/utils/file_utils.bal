@@ -1,3 +1,19 @@
+// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).
+//
+// WSO2 LLC. licenses this file to you under the Apache License,
+// Version 2.0 (the "License"); you may not use this file except
+// in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied. See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
 import ballerina/io;
 import ballerina/time;
 
@@ -23,4 +39,67 @@ public function saveExecutionPrompt(string content, string goalSlug) returns str
     // Write the execution prompt to file
     check io:fileWriteString(filePath, content);
     return filePath;
+}
+
+# Injects a "Deploy to Devant" button under a "## Try it yourself" section
+# into the workflow doc. The project name is read from
+# artifacts/run-log/created-project.txt.
+# Failures are logged as warnings; this function never blocks the pipeline.
+#
+# + docPath - absolute path to the workflow doc .md file to update
+public function injectDevantButton(string docPath) {
+    string projectPathFile = "artifacts/run-log/created-project.txt";
+    string marker = "## More Code Examples";
+    string sectionHeading = "## Try it yourself";
+
+    // Read project name from run-log
+    string|error rawResult = io:fileReadString(projectPathFile);
+    if rawResult is error {
+        log("\t[WARN] created-project.txt not found — skipping Devant button injection");
+        return;
+    }
+    string raw = rawResult.trim();
+    if raw == "" {
+        log("\t[WARN] created-project.txt is empty — skipping Devant button injection");
+        return;
+    }
+
+    // Extract last path segment as project name
+    string[] parts = re`[/\\]`.split(raw);
+    string projectName = parts[parts.length() - 1];
+    string buttonLine = string `[![Deploy to Devant](https://openindevant.choreoapps.dev/images/DeployDevant-White.svg)](https://console.devant.dev/new?gh=wso2/integration-samples/tree/main/connectors/${projectName})`;
+
+    // Read doc content
+    string|error contentResult = io:fileReadString(docPath);
+    if contentResult is error {
+        log("\t[WARN] Failed to read doc file — skipping Devant button injection");
+        return;
+    }
+    string content = contentResult;
+
+    // Idempotency check
+    if content.includes(sectionHeading) {
+        log("\t[INFO] '" + sectionHeading + "' already present — skipping Devant button injection");
+        return;
+    }
+
+    // Build section block and inject
+    string sectionBlock = sectionHeading + "\n\n" + buttonLine;
+    string updated;
+    int? markerIdx = content.indexOf(marker);
+    if markerIdx is int {
+        updated = content.substring(0, markerIdx) + sectionBlock + "\n\n" + content.substring(markerIdx);
+    } else {
+        log("\t[WARN] '" + marker + "' not found in doc — appending '" + sectionHeading + "' at end of file");
+        updated = content.trim() + "\n\n" + sectionBlock + "\n";
+    }
+
+    // Write updated content
+    error? writeErr = io:fileWriteString(docPath, updated);
+    if writeErr is error {
+        log("\t[WARN] Failed to write doc file — skipping Devant button injection");
+        return;
+    }
+
+    log("\t[INFO] Injected Deploy to Devant button for project '" + projectName + "' into " + docPath);
 }
