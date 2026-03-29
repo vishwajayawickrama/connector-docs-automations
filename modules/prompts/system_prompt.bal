@@ -408,13 +408,14 @@ covered and what API resources will be created, (3) the overall flow assembled o
 
 ## Architecture
 
-[Generate a horizontal Mermaid flowchart (flowchart LR) that visualises the integration flow for this specific connector.
+[Generate a horizontal Mermaid flowchart that visualises the integration flow for this specific connector.
 Rules:
-- Use 4–5 nodes — choose the count appropriate for this connector's complexity.
+- **MANDATORY: Use ${bt}flowchart LR${bt} — the diagram MUST be horizontal (left-to-right). Never use TD, TB, BT, or RL.**
+- **MANDATORY: Minimum 4 nodes.** A 3-node diagram is never acceptable. If the flow seems simple, split the connector node into separate "Connector" and "Operation" nodes to reach at least 4.
+- **MANDATORY: No ${bt}\n${bt} characters anywhere in the diagram** — not inside node labels, not in edge labels, nowhere. Use a space instead.
 - Do NOT include WSO2 Integrator, code-server, or any tooling/environment nodes.
 - Focus only on WHAT is being built: the entry point, the connector operation(s), and the target resource(s).
 - Use real names from the actual workflow (e.g., "Kafka Connector Send Operation", "MySQL Database").
-- Do NOT use ${bt}\n${bt} in node labels — use a space instead.
 - Add branching where it naturally fits (e.g., multiple operations or multiple target resources) — not mandatory for simple flows.
 
 Example — simple (4 nodes):

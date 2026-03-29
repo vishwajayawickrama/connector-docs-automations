@@ -343,6 +343,38 @@ Each screenshot must be embedded in the step whose **action directly produced wh
 
 ---
 
+## ARCHITECTURE DIAGRAM
+
+The ## Architecture section MUST contain exactly one mermaid flowchart fenced block. Apply all three rules below — fix any violation found.
+
+### Rule ARCH-1: Horizontal direction (MANDATORY)
+
+The first line inside the mermaid block MUST be exactly:
+  flowchart LR
+
+Any other direction (TD, TB, BT, RL, or missing direction) is a violation. Replace it with flowchart LR.
+
+### Rule ARCH-2: Minimum 4 nodes (MANDATORY)
+
+Count every distinct node identifier in the diagram. There MUST be at least 4 nodes.
+
+If the diagram has only 3 nodes, split the connector node into two: one for the connector itself and one for the operation. Example fix:
+
+  BEFORE (3 nodes — violation):
+    A[Automation Trigger] --> B[Redis Connector]
+    B --> C[Redis Cache]
+
+  AFTER (4 nodes — fixed):
+    A[Automation Trigger] --> B[Redis Connector]
+    B --> C[Set Operation]
+    C --> D[Redis Cache]
+
+### Rule ARCH-3: No \n characters anywhere in the diagram (MANDATORY)
+
+Scan every line inside the mermaid fenced block. Replace every occurrence of the literal two-character sequence \n (backslash + n) with a single space — inside node labels, edge labels, or anywhere else it appears.
+
+---
+
 ## PROCEDURE
 
 1. Read the entire document
@@ -351,6 +383,7 @@ Each screenshot must be embedded in the step whose **action directly produced wh
 4. Ensure every step follows the STEP FORMAT
 5. Apply all MICROSOFT STYLE GUIDE COMPLIANCE rules (MSG-1 through MSG-9)
 5b. Apply CONFIGURABLE USAGE rules (CFG-1 and CFG-2)
+5c. Apply ARCHITECTURE DIAGRAM rules (ARCH-1 through ARCH-3)
 6. Preserve all image paths exactly as-is
 7. Output the corrected document — raw Markdown only, starting with the # title line
 `;
