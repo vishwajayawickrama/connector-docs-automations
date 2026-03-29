@@ -304,8 +304,9 @@ If the goal uses an event listener entry point, or the connector can be called d
 5. Inspect all available input fields and the **Record Configuration** panel.
 6. Populate the Record Configuration or input fields with a valid, functional data template:
    - For byte-based systems (Kafka, MQTT): use ${bt}.toBytes()${bt} — e.g., ${bt}"Hello World".toBytes()${bt} for the message payload
-   - For record-based connectors (Database INSERT): provide a typed record literal — e.g., ${bt}{ id: 1, name: "test-record", value: 0.0 }${bt}
-   - For REST/HTTP: provide a JSON body — e.g., ${bt}{ "key": "value" }${bt}
+   - For record-based connectors (Database INSERT): provide a typed record literal — e.g., ${bt}{ id: 1, name: "John Doe", email: "john@example.com" }${bt}
+   - For key-value stores (Redis, DynamoDB, Hazelcast): use meaningful key/value pairs — e.g., key ${bt}"greeting"${bt}, value ${bt}"Hello, World!"${bt}
+   - For REST/HTTP: provide a JSON body — e.g., ${bt}{ "message": "Hello, World!", "sender": "integration" }${bt}
    - For Salesforce: provide an sObject map — e.g., ${bt}{ Name: "Test Account", Industry: "Technology" }${bt}
 7. Map or bind the operation output to a variable if the panel requires it (e.g., assign the result to a local variable named ${bt}result${bt}).
 8. **MANDATORY screenshot 5**: After populating ALL operation input fields / Record Configuration, take a screenshot showing all filled values — before or after clicking Save. Every configured field must be visible.
