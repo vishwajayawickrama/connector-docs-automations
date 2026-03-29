@@ -49,7 +49,6 @@ public function saveExecutionPrompt(string content, string goalSlug) returns str
 # + docPath - absolute path to the workflow doc .md file to update
 public function injectDevantButton(string docPath) {
     string projectPathFile = "artifacts/run-log/created-project.txt";
-    string marker = "## More Code Examples";
     string sectionHeading = "## Try it yourself";
 
     // Read project name from run-log
@@ -83,16 +82,9 @@ public function injectDevantButton(string docPath) {
         return;
     }
 
-    // Build section block and inject
+    // Build section block and append
     string sectionBlock = sectionHeading + "\n\n" + buttonLine;
-    string updated;
-    int? markerIdx = content.indexOf(marker);
-    if markerIdx is int {
-        updated = content.substring(0, markerIdx) + sectionBlock + "\n\n" + content.substring(markerIdx);
-    } else {
-        log("\t[WARN] '" + marker + "' not found in doc — appending '" + sectionHeading + "' at end of file");
-        updated = content.trim() + "\n\n" + sectionBlock + "\n";
-    }
+    string updated = content.trim() + "\n\n" + sectionBlock + "\n";
 
     // Write updated content
     error? writeErr = io:fileWriteString(docPath, updated);
