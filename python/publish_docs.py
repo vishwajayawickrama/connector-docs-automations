@@ -29,15 +29,13 @@ Usage:
     python python/publish_docs.py [options]
 
 Optional:
-    --docs-repo PATH        Path to local clone of the docs-integrator fork
-                            (default: ../docs-integrator relative to this workspace)
     --artifacts-dir PATH    Path to pipeline artifacts directory (default: ./artifacts)
-    --fork OWNER/REPO       Fork repo slug (inferred from git remote 'origin' if omitted)
-    --upstream OWNER/REPO   Upstream repo for the PR (default: wso2/docs-integrator)
-    --base-branch BRANCH    PR target branch (default: dev)
     --category CATEGORY     Connector category — required if not in the built-in map
+    --no-pr                 Push the branch but skip creating a pull request
     --no-preview            Skip Playwright preview screenshots
     --dry-run               Print planned actions without making any changes
+
+Defaults for repo paths and GitHub identifiers are read from .env (see .env.example).
 
 Prerequisites:
     - gh CLI authenticated (gh auth login)
@@ -808,6 +806,11 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--no-pr",
+        action="store_true",
+        help="Push the branch but skip creating a pull request",
+    )
+    parser.add_argument(
         "--no-preview",
         action="store_true",
         help="Skip Playwright preview screenshots",
@@ -858,7 +861,20 @@ def main() -> None:
         source_doc_path, screenshot_files, args.dry_run,
     )
 
-    # ── 9. Preview screenshots (not committed to docs repo) ───────────────────
+    # ── 9. Commit + push ──────────────────────────────────────────────────────
+    commit_and_push(docs_repo, connector_name, branch_name, args.dry_run)
+
+    if args.no_pr:
+        print()
+        print("=" * 79)
+        if args.dry_run:
+            print("Dry run complete. Remove --dry-run to execute.")
+        else:
+            print(f"Branch pushed: {branch_name}  (--no-pr: skipped PR creation)")
+        print("=" * 79)
+        return
+
+    # ── 10. Preview screenshots (not committed to docs repo) ──────────────────
     preview_urls: list[str] = []
     if not args.no_preview:
         preview_files = take_preview_screenshots(
@@ -868,9 +884,6 @@ def main() -> None:
             preview_urls = upload_preview_as_release(
                 preview_files, connector_name, connector_slug, branch_name, fork
             )
-
-    # ── 10. Commit + push ─────────────────────────────────────────────────────
-    commit_and_push(docs_repo, connector_name, branch_name, args.dry_run)
 
     # ── 11. Create PR ─────────────────────────────────────────────────────────
     pr_body = build_pr_body(

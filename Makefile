@@ -1,7 +1,7 @@
 .PHONY: help setup setup-python setup-bal build run \
         start-agent stop-agent \
         crop-screenshots crop-screenshots-dry crop-screenshots-backup \
-        publish-docs publish-docs-dry publish-docs-no-preview \
+        publish-docs publish-docs-dry publish-docs-no-preview publish-docs-no-pr \
         cleanup cleanup-dry \
         clean clean-artifacts
 
@@ -24,6 +24,7 @@ help:
 	@echo "    make publish-docs             Publish docs + create PR (auto-detects docs-integrator path)"
 	@echo "    make publish-docs-dry         Dry run — print planned actions, no changes"
 	@echo "    make publish-docs-no-preview  Publish docs without Playwright preview screenshots"
+	@echo "    make publish-docs-no-pr       Push branch + commit only, skip PR creation"
 	@echo "    PUBLISH_ARGS='...'            Pass extra flags, e.g. PUBLISH_ARGS='--category messaging'"
 	@echo "    DOCS_REPO=PATH                Override docs-integrator path"
 	@echo "    DOCS_UPSTREAM=OWNER/REPO      Override docs PR target repo (.env: DOCS_INTEGRATOR_UPSTREAM)"
@@ -120,6 +121,10 @@ publish-docs-dry: python/.venv/.installed
 publish-docs-no-preview: python/.venv/.installed
 	@echo "→ Publishing connector docs (no preview)..."
 	$(_publish_docs_cmd) --no-preview
+
+publish-docs-no-pr: python/.venv/.installed
+	@echo "→ Publishing connector docs (branch + commit only, no PR)..."
+	$(_publish_docs_cmd) --no-pr
 
 # ── Publish sample ────────────────────────────────────────────────────────────
 # Defaults are read from .env by publish_sample.py.
