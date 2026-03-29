@@ -234,6 +234,39 @@ Example: "use pipelines — logical groups — to..." → "use pipelines—logic
 EXCEPTION: Do NOT apply this rule to parameter bullet lines where " — " is the intentional
 separator between the parameter name and its description (e.g., **host** — the Redis server hostname).
 
+### Rule MSG-9: Numbered sub-list for multi-instruction step bodies (MANDATORY)
+
+If a step body contains **2 or more distinct sequential instructions written as prose**, convert them to a numbered sub-list.
+
+A "distinct sequential instruction" is any sentence (or clause separated by a period, semicolon, or "then") that describes a UI action such as click, type, select, expand, fill, navigate, or save.
+
+**How to detect a violation:**
+- The step body is a prose paragraph (not already a numbered list).
+- It contains 2 or more sentences (or comma/semicolon-joined clauses) that each describe a separate UI action.
+
+**How to fix:**
+- Split each instruction into its own numbered item (1., 2., 3., …).
+- Keep parameter bullet lines (- **paramName** — description) and screenshot references AFTER the last numbered item, outside the numbered list.
+
+**Examples:**
+
+VIOLATION — must be converted:
+  Click the **+ Add Connection** button to open the palette. Search for the connector by name and click the connector card to open the form.
+FIXED:
+  1. Click the **+ Add Connection** button to open the palette.
+  2. Search for the connector by name.
+  3. Click the connector card to open the form.
+
+VIOLATION — multi-clause single sentence with "then":
+  In the left panel click **Configurations**, then set a value for each configurable listed below.
+FIXED:
+  1. In the left panel, click **Configurations**.
+  2. Set a value for each configurable listed below.
+
+NOT a violation — single compound action (keep as prose):
+  Type "redis" in the search box and click the **Redis** connector card.
+(One compound action — no conversion needed.)
+
 ---
 
 ## CONFIGURABLE USAGE
@@ -316,7 +349,7 @@ Each screenshot must be embedded in the step whose **action directly produced wh
 2. Fix every violation from the BANNED CONTENT list
 3. Ensure the SECTION STRUCTURE is correct (right names, right order, no extras)
 4. Ensure every step follows the STEP FORMAT
-5. Apply all MICROSOFT STYLE GUIDE COMPLIANCE rules (MSG-1 through MSG-8)
+5. Apply all MICROSOFT STYLE GUIDE COMPLIANCE rules (MSG-1 through MSG-9)
 5b. Apply CONFIGURABLE USAGE rules (CFG-1 and CFG-2)
 6. Preserve all image paths exactly as-is
 7. Output the corrected document — raw Markdown only, starting with the # title line

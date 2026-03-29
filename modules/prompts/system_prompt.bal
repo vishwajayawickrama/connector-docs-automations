@@ -364,12 +364,15 @@ Step format:
   - **[paramName]** — [one-line description of what this parameter controls]
   ![screenshot description](../screenshots/[prefix]_screenshot_NN.png)
 
-**Numbered sub-list rule (applies to ALL sections):**
-If a step's description contains **3 or more distinct sequential actions** that would naturally
-be written as separate sentences in a paragraph, format them as a numbered sub-list instead
-of a prose paragraph. This makes multi-action steps easier for users to follow.
+**Numbered sub-list rule (applies to ALL sections — MANDATORY):**
+If a step body paragraph contains **2 or more distinct sequential instructions**, format them
+as a numbered sub-list instead of a prose paragraph. A "distinct sequential instruction" is
+any sentence that describes a UI action (click, type, select, expand, fill, save, etc.) or
+a distinct configuration step. Do NOT write multiple instructions as a single prose paragraph.
+Parameter bullet lines (**paramName** — description) and screenshot references remain outside
+the numbered sub-list, after the last numbered item.
 
-  Example — use a numbered sub-list (3+ actions):
+  Example — CORRECT: numbered sub-list (2+ instructions):
   ### Step N: Add an automation trigger and configure the Send operation
   1. On the canvas, click **+ Add Automation** to add a new automation entry point.
   2. In the trigger configuration panel, set the interval to **1 minute** and click **Save**.
@@ -380,10 +383,15 @@ of a prose paragraph. This makes multi-action steps easier for users to follow.
   - **value** — the message payload as a byte array
   ![...](../screenshots/kafka_screenshot_05_operation_filled.png)
 
-  Example — keep as one sentence (1–2 actions):
+  Example — CORRECT: single sentence (only 1 instruction):
   ### Step N: Search for the Redis connector in the palette
   Type "redis" in the search box and click the **Redis** connector card.
   ![...](../screenshots/redis_screenshot_01_palette.png)
+
+  Example — WRONG: multiple instructions written as prose (must be converted):
+  ### Step N: Open the palette and add the connector
+  Click the **+ Add Connection** button to open the palette. Search for the connector and click the connector card to open the form.
+  ↑ This has 3 distinct instructions — convert to a numbered sub-list.
 
 ${bt}${bt}${bt}markdown
 # Example
