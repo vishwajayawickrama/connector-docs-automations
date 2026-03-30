@@ -3,8 +3,8 @@ name: Connector Documentation Automation
 on:
   workflow_dispatch:
     inputs:
-      userGoal:
-        description: "The WSO2 integration goal to document (e.g. 'Create an HTTP GET connector that fetches data from a MySQL database')"
+      connectorName:
+        description: "Exact Ballerina Central package name (e.g. 'mysql', 'googlesheets', 'kafka')"
         required: true
         type: string
       codeServerPort:
@@ -118,19 +118,16 @@ jobs:
           fi
 
       # ── 9. Config.toml ───────────────────────────────────────────────────────
-      # Use Python to write the file so special characters in the API key or goal
-      # are properly escaped for TOML basic string syntax.
+      # Use Python to write the file so special characters in the API key or
+      # connector name are properly escaped for TOML basic string syntax.
+      # Only Ballerina configurable fields go here; git-related params are passed
+      # as env vars to the Python agent server in the next step.
       - name: Create Config.toml
         env:
-          USER_GOAL: ${{ inputs.userGoal }}
+          CONNECTOR_NAME: ${{ inputs.connectorName }}
           CODE_SERVER_PORT: ${{ inputs.codeServerPort }}
           AGENT_SERVER_PORT: ${{ inputs.agentServerPort }}
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
-          INTEGRATION_SAMPLES_UPSTREAM: ${{ inputs.integrationSamplesUpstream }}
-          INTEGRATION_SAMPLES_BASE_BRANCH: ${{ inputs.integrationSamplesBaseBranch }}
-          DOCS_INTEGRATOR_FORK: ${{ inputs.docsIntegratorFork }}
-          DOCS_INTEGRATOR_UPSTREAM: ${{ inputs.docsIntegratorUpstream }}
-          DOCS_INTEGRATOR_BASE_BRANCH: ${{ inputs.docsIntegratorBaseBranch }}
         run: |
           python3 - << 'PYEOF'
           import os
@@ -139,26 +136,16 @@ jobs:
               """Escape backslashes and double-quotes for a TOML basic string."""
               return s.replace("\\", "\\\\").replace('"', '\\"')
 
-          api_key    = toml_escape(os.environ["LLM_API_KEY"])
-          user_goal  = toml_escape(os.environ["USER_GOAL"])
-          code_port  = int(os.environ["CODE_SERVER_PORT"])
-          agent_port = int(os.environ["AGENT_SERVER_PORT"])
-          int_samples_upstream     = toml_escape(os.environ["INTEGRATION_SAMPLES_UPSTREAM"])
-          int_samples_base_branch  = toml_escape(os.environ["INTEGRATION_SAMPLES_BASE_BRANCH"])
-          docs_fork         = toml_escape(os.environ["DOCS_INTEGRATOR_FORK"])
-          docs_upstream     = toml_escape(os.environ["DOCS_INTEGRATOR_UPSTREAM"])
-          docs_base_branch  = toml_escape(os.environ["DOCS_INTEGRATOR_BASE_BRANCH"])
+          api_key        = toml_escape(os.environ["LLM_API_KEY"])
+          connector_name = toml_escape(os.environ["CONNECTOR_NAME"])
+          code_port      = int(os.environ["CODE_SERVER_PORT"])
+          agent_port     = int(os.environ["AGENT_SERVER_PORT"])
 
           config = (
               f'llmApiKey = "{api_key}"\n'
-              f'userGoal = "{user_goal}"\n'
+              f'connectorName = "{connector_name}"\n'
               f"codeServerPort = {code_port}\n"
               f"agentServerPort = {agent_port}\n"
-              f'integrationSamplesUpstream = "{int_samples_upstream}"\n'
-              f'integrationSamplesBaseBranch = "{int_samples_base_branch}"\n'
-              f'docsIntegratorFork = "{docs_fork}"\n'
-              f'docsIntegratorUpstream = "{docs_upstream}"\n'
-              f'docsIntegratorBaseBranch = "{docs_base_branch}"\n'
           )
 
           with open("Config.toml", "w") as f:
@@ -239,13 +226,13 @@ jobs:
 
       # ── 14. Write connector metadata for downstream publish workflow ─────────
       # Produces connector-meta.json consumed by publish-connector-docs.yml.
-      # Python-based to safely handle special characters in userGoal (same
+      # Python-based to safely handle special characters in connectorName (same
       # pattern as Config.toml creation above).
       - name: Write connector metadata
         env:
           CONNECTOR_NAME: ${{ steps.connector.outputs.connector_name }}
           DIR_NAME: ${{ steps.connector.outputs.dir_name }}
-          USER_GOAL: ${{ inputs.userGoal }}
+          CONNECTOR_NAME_INPUT: ${{ inputs.connectorName }}
           RUN_ID: ${{ github.run_id }}
           REPO: ${{ github.repository }}
         run: |
@@ -256,7 +243,7 @@ jobs:
             "dir_name": os.environ["DIR_NAME"],
             "source_run_id": os.environ["RUN_ID"],
             "source_run_url": f"https://github.com/{os.environ['REPO']}/actions/runs/{os.environ['RUN_ID']}",
-            "user_goal": os.environ["USER_GOAL"]
+            "connector_name_input": os.environ["CONNECTOR_NAME_INPUT"]
           }
           with open("connector-meta.json", "w") as f:
             json.dump(meta, f, indent=2)
