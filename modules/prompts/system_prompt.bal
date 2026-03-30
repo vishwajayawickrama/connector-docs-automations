@@ -101,7 +101,7 @@ You are also a Technical Documentation Specialist — after automation, write th
 - **If a .bal file tab opens automatically** (e.g., VS Code auto-opens it when creating an integration), **immediately close that editor tab** — click the × on the tab or use Ctrl+W — before proceeding. Do NOT read, inspect, or document its contents.
 - **If any source code window or code editor tab is open**, close it before taking any milestone screenshot. Screenshots must never show source code.
 - If a step appears to require manual code editing, **stop and request user guidance**.
-- Do **NOT** click the **Expression** toggle/button for any connection parameter field. Configurable variables can be bound directly via the helper panel without switching a field into expression mode.
+- Do **NOT** click the **Expression** toggle/button for any connection parameter field — this includes boolean fields. Boolean fields (showing a true/false dropdown) must be set by selecting from the dropdown, never by switching to Expression mode. For non-boolean fields, use the helper panel directly without switching to Expression mode.
 </rules_lowcode>
 
 <rules_playwright_mcp>
@@ -225,9 +225,13 @@ MANDATORY STAGE STRUCTURE — you MUST include ALL of the following stage catego
 **CATEGORY B — Configure Connection Parameters (1 stage)**
 - Name it "Configure [ConnectorName] Connection Parameters"
 - This is a CONTINUOUS form interaction — the form was opened at the end of CATEGORY A. Do NOT leave the form, save with defaults, and re-open it. Fill all parameters in one visit.
-- **ALL connection fields — required AND optional — MUST be bound to a Configurable variable.**
-  Do NOT leave any field empty or skip it because it appears optional. Every visible field in the
-  connection form must have a configurable bound to it before saving.
+- **ALL non-boolean connection fields — required AND optional — MUST be bound to a Configurable variable.**
+  Do NOT leave any field empty or skip it because it appears optional.
+  **Exception — Boolean fields (dropdowns showing true/false):** Do NOT create a configurable for
+  these. Instead, simply select **true** or **false** from the dropdown as appropriate for the
+  default/recommended value. Never switch a boolean dropdown to Expression mode.
+  Every visible non-boolean field in the connection form must have a configurable bound to it
+  before saving.
   Before saving, scroll through the entire form from top to bottom to confirm no field was missed.
   The workflow MUST be done field-by-field — do NOT try to create configurables for multiple
   fields from the same helper panel session. Follow these sub-steps for EACH field individually:
@@ -238,7 +242,7 @@ MANDATORY STAGE STRUCTURE — you MUST include ALL of the following stage catego
   4. Click **+ New Configurable**.
   5. In the **New Configurable** dialog:
      - **Variable Name**: enter a descriptive camelCase name (e.g., ${bt}redisHost${bt}, ${bt}dbPassword${bt}, ${bt}kafkaBrokerUrl${bt}, ${bt}salesforceClientId${bt}).
-     - **Variable Type**: choose the primitive type — ${bt}string${bt} for text/URLs/credentials, ${bt}int${bt} for numeric ports or counts, ${bt}boolean${bt} for flags.
+     - **Variable Type**: choose the primitive type — ${bt}string${bt} for text/URLs/credentials, ${bt}int${bt} for numeric ports or counts. Do NOT create boolean configurables — boolean fields use dropdowns instead (see rule above).
      - **Default Value**: leave blank for sensitive values (passwords, API keys).
      - Click **Save**.
   6. **CRITICAL**: After clicking Save, the new configurable is AUTOMATICALLY injected into

@@ -2,6 +2,7 @@
         start-agent stop-agent \
         crop-screenshots crop-screenshots-dry crop-screenshots-backup \
         publish-docs publish-docs-dry publish-docs-no-preview publish-docs-no-pr \
+        publish-sample publish-sample-dry publish-sample-no-pr publish-sample-no-publish \
         cleanup cleanup-dry \
         clean clean-artifacts
 
@@ -30,17 +31,18 @@ help:
 	@echo "    DOCS_UPSTREAM=OWNER/REPO      Override docs PR target repo (.env: DOCS_INTEGRATOR_UPSTREAM)"
 	@echo "    DOCS_BASE_BRANCH=BRANCH       Override docs PR base branch (.env: DOCS_INTEGRATOR_BASE_BRANCH)"
 	@echo ""
-	@echo "  Cleanup"
-	@echo "    make cleanup                  Publish integration sample PR + delete local project + close tabs"
-	@echo "    make cleanup-dry              Dry run — print planned actions, no changes"
-	@echo "    CODE_SERVER_PORT=N            Override code-server port (.env: CODE_SERVER_PORT)"
-	@echo "    AGENT_SERVER_PORT=N           Override agent server port (.env: AGENT_SERVER_PORT)"
-	@echo "    SAMPLES_REPO=PATH             Override integration-samples path (.env: INTEGRATION_SAMPLES_REPO)"
-	@echo "    INTEGRATION_UPSTREAM=OWNER/REPO  Override samples PR target repo (.env: INTEGRATION_SAMPLES_UPSTREAM)"
-	@echo "    INTEGRATION_BASE_BRANCH=BRANCH   Override samples PR base branch (.env: INTEGRATION_SAMPLES_BASE_BRANCH)"
-	@echo "    PROJECT_PATH=PATH             Manually set project path (writes created-project.txt)"
-	@echo "    NO_PR=1                       Push branch but skip PR creation"
-	@echo "    CLEANUP_ARGS='...'            Pass extra flags, e.g. CLEANUP_ARGS='--no-publish'"
+	@echo "  Publish Sample"
+	@echo "    make publish-sample               Publish integration sample PR + delete local project + close tabs"
+	@echo "    make publish-sample-dry           Dry run — print planned actions, no changes"
+	@echo "    make publish-sample-no-pr         Push branch + commit only, skip PR creation"
+	@echo "    make publish-sample-no-publish    Delete local project + close tabs, skip sample publishing"
+	@echo "    PUBLISH_SAMPLE_ARGS='...'         Pass extra flags to publish_sample.py"
+	@echo "    CODE_SERVER_PORT=N                Override code-server port (.env: CODE_SERVER_PORT)"
+	@echo "    SAMPLES_REPO=PATH                 Override integration-samples path (.env: INTEGRATION_SAMPLES_REPO)"
+	@echo "    INTEGRATION_UPSTREAM=OWNER/REPO   Override samples PR target repo (.env: INTEGRATION_SAMPLES_UPSTREAM)"
+	@echo "    INTEGRATION_BASE_BRANCH=BRANCH    Override samples PR base branch (.env: INTEGRATION_SAMPLES_BASE_BRANCH)"
+	@echo "    PROJECT_PATH=PATH                 Manually set project path (writes created-project.txt)"
+	@echo "    NO_PR=1                           Push branch but skip PR creation"
 	@echo ""
 	@echo "  Artifacts"
 	@echo "    make clean            Remove artifacts/, target/, Dependencies.toml, python/.venv"
@@ -134,7 +136,7 @@ publish-docs-no-pr: python/.venv/.installed
 # INTEGRATION_UPSTREAM     — GitHub org/repo for integration samples PRs
 # INTEGRATION_BASE_BRANCH  — base branch for integration samples PRs
 # NO_PR                    — set to 1 to push branch without creating a PR
-# CLEANUP_ARGS             — extra flags passed to publish_sample.py
+# PUBLISH_SAMPLE_ARGS      — extra flags passed to publish_sample.py
 
 CODE_SERVER_PORT ?=
 SAMPLES_REPO ?=
@@ -142,23 +144,36 @@ PROJECT_PATH ?=
 INTEGRATION_UPSTREAM ?=
 INTEGRATION_BASE_BRANCH ?=
 NO_PR ?=
+PUBLISH_SAMPLE_ARGS ?=
 
-_cleanup_cmd = python/.venv/bin/python python/publish_sample.py \
+_publish_sample_cmd = python/.venv/bin/python python/publish_sample.py \
   $(if $(CODE_SERVER_PORT),--url "http://localhost:$(CODE_SERVER_PORT)",) \
   $(if $(SAMPLES_REPO),--samples-repo "$(SAMPLES_REPO)",) \
   $(if $(PROJECT_PATH),--project-path "$(PROJECT_PATH)",) \
   $(if $(INTEGRATION_UPSTREAM),--upstream "$(INTEGRATION_UPSTREAM)",) \
   $(if $(INTEGRATION_BASE_BRANCH),--base-branch "$(INTEGRATION_BASE_BRANCH)",) \
   $(if $(NO_PR),--no-pr,) \
-  $(CLEANUP_ARGS)
+  $(PUBLISH_SAMPLE_ARGS)
 
-cleanup: python/.venv/.installed
+publish-sample: python/.venv/.installed
 	@echo "→ Publishing integration sample, deleting local project, closing tabs..."
-	$(_cleanup_cmd)
+	$(_publish_sample_cmd)
 
-cleanup-dry: python/.venv/.installed
-	@echo "→ Cleanup dry run..."
-	$(_cleanup_cmd) --dry-run
+publish-sample-dry: python/.venv/.installed
+	@echo "→ Publishing integration sample (dry run)..."
+	$(_publish_sample_cmd) --dry-run
+
+publish-sample-no-pr: python/.venv/.installed
+	@echo "→ Publishing integration sample (branch + commit only, no PR)..."
+	$(_publish_sample_cmd) --no-pr
+
+publish-sample-no-publish: python/.venv/.installed
+	@echo "→ Deleting local project and closing editor tabs (skip sample publishing)..."
+	$(_publish_sample_cmd) --no-publish
+
+# Aliases for backward compatibility
+cleanup: publish-sample
+cleanup-dry: publish-sample-dry
 
 # ── Artifacts ────────────────────────────────────────────────────────────────
 clean:
